@@ -1,4 +1,4 @@
-package com.example.medistore.service;
+package com.example.medistore.service.product;
 
 import java.util.List;
 import java.util.UUID;

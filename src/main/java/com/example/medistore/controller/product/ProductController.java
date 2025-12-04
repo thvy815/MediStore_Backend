@@ -1,4 +1,4 @@
-package com.example.medistore.controller;
+package com.example.medistore.controller.product;
 
 import java.util.List;
 import java.util.UUID;
@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.*;
 
 import com.example.medistore.dto.product.ProductRequest;
 import com.example.medistore.dto.product.ProductResponse;
-import com.example.medistore.service.ProductService;
+import com.example.medistore.service.product.ProductService;
 
 import lombok.RequiredArgsConstructor;
 

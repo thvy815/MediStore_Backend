@@ -1,4 +1,4 @@
-package com.example.medistore.controller;
+package com.example.medistore.controller.product;
 
 import java.util.List;
 import java.util.UUID;
@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.*;
 import lombok.RequiredArgsConstructor;
 
 import com.example.medistore.entity.product.Unit;
-import com.example.medistore.service.UnitService;
+import com.example.medistore.service.product.UnitService;
 
 @RestController
 @RequestMapping("/api/units")

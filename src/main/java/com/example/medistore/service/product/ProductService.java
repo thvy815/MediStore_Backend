@@ -1,4 +1,4 @@
-package com.example.medistore.service;
+package com.example.medistore.service.product;
 
 import java.time.LocalDateTime;
 import java.util.List;
