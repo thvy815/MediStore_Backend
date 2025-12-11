@@ -31,8 +31,8 @@ public class UserService {
             throw new RuntimeException("Email already exists");
         }
 
-        Role userRole = roleRepo.findByName("USER")
-                .orElseThrow(() -> new RuntimeException("USER role not found"));
+        Role userRole = roleRepo.findByName("Customer")
+                .orElseThrow(() -> new RuntimeException("Customer role not found"));
 
         User user = User.builder()
                 .email(req.getEmail())
