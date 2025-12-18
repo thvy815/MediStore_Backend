@@ -13,6 +13,7 @@ public class ProductRequest {
     private UUID categoryId;
     private String description;
     private String ingredients;
+    private String imageUrl;
     private Boolean prescriptionRequired;
     private Boolean isActive;
     private List<ProductUnitRequest> units; // thêm list đơn vị

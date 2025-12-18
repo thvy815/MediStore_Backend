@@ -5,6 +5,7 @@ import java.util.UUID;
 
 import org.springframework.web.bind.annotation.*;
 
+import com.example.medistore.dto.product.ProductActiveRequest;
 import com.example.medistore.dto.product.ProductRequest;
 import com.example.medistore.dto.product.ProductResponse;
 import com.example.medistore.service.product.ProductService;
@@ -27,6 +28,11 @@ public class ProductController {
     @PutMapping("/{id}")
     public ProductResponse update(@PathVariable UUID id, @RequestBody ProductRequest request) {
         return productService.updateProduct(id, request);
+    }
+
+    @PatchMapping("/{id}/active")
+    public ProductResponse updateActive(@PathVariable UUID id, @RequestBody ProductActiveRequest request) {
+        return productService.updateProductActive(id, request.getIsActive());
     }
 
     @DeleteMapping("/{id}")

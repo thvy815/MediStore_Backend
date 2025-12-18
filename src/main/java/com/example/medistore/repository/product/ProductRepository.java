@@ -12,4 +12,5 @@ import com.example.medistore.entity.product.Product;
 public interface ProductRepository extends JpaRepository<Product, UUID> {
     List<Product> findByNameContainingIgnoreCase(String name);
     List<Product> findByCodeContainingIgnoreCase(String code);
+    boolean existsByCode(String code);
 }

@@ -34,13 +34,16 @@ public class Product {
     @Column(name = "ingredients", columnDefinition = "TEXT")
     private String ingredients;
 
+    @Column(name = "image_url", columnDefinition = "TEXT")        
+    private String imageUrl;
+
     @Builder.Default
     @Column(name = "prescription_required")
     private Boolean prescriptionRequired = false;
 
     @Builder.Default
     @Column(name = "is_active")
-    private Boolean isActive = true;
+    private Boolean isActive = false;
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;

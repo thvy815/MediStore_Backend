@@ -14,6 +14,7 @@ public class ProductResponse {
     private String categoryName;
     private String description;
     private String ingredients;
+    private String imageUrl;
     private Boolean prescriptionRequired;
     private Boolean isActive;
     private List<ProductUnitResponse> units;

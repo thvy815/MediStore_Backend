@@ -5,6 +5,8 @@ import java.util.List;
 import java.util.UUID;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.example.medistore.entity.product.Product;
 import com.example.medistore.entity.product.ProductUnit;
 import com.example.medistore.repository.product.*;
@@ -20,14 +22,28 @@ public class ProductService {
     private final CategoryRepository categoryRepository;
     private final UnitRepository unitRepository;
 
+    private String normalizeCode(String code) {
+        if (code == null || code.isBlank()) {
+            return null;
+        }
+        return code.trim();
+    }
+
     // Create product
     public ProductResponse createProduct(ProductRequest request) {
+        String code = normalizeCode(request.getCode());
+
+        if (code != null && productRepository.existsByCode(code)) {
+            throw new RuntimeException("Product code already exists");
+        }
+
         // --- CREATE PRODUCT ---
         Product product = Product.builder()
-                .code(request.getCode())
+                .code(code)
                 .name(request.getName())
                 .brand(brandRepository.findById(request.getBrandId()).orElse(null))
                 .category(categoryRepository.findById(request.getCategoryId()).orElse(null))
+                .imageUrl(request.getImageUrl())
                 .description(request.getDescription())
                 .ingredients(request.getIngredients())
                 .prescriptionRequired(request.getPrescriptionRequired())
@@ -57,14 +73,23 @@ public class ProductService {
     }
 
     // Update
+    @Transactional
     public ProductResponse updateProduct(UUID productId, ProductRequest request) {
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new RuntimeException("Product not found"));
 
+        String code = normalizeCode(request.getCode());
+
+        if (code != null && productRepository.existsByCode(code) && !code.equals(product.getCode())) {
+            throw new RuntimeException("Product code already exists");
+        }
+
         // UPDATE PRODUCT FIELDS
+        product.setCode(code); 
         product.setName(request.getName());
         product.setBrand(brandRepository.findById(request.getBrandId()).orElse(null));
         product.setCategory(categoryRepository.findById(request.getCategoryId()).orElse(null));
+        product.setImageUrl(request.getImageUrl());
         product.setDescription(request.getDescription());
         product.setIngredients(request.getIngredients());
         product.setPrescriptionRequired(request.getPrescriptionRequired());
@@ -112,6 +137,19 @@ public class ProductService {
         return productRepository.findAll().stream().map(this::mapToResponse).toList();
     }
 
+    // Update product active
+    public ProductResponse updateProductActive(UUID productId, Boolean isActive) {
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new RuntimeException("Product not found"));
+
+        product.setIsActive(isActive);
+        product.setUpdatedAt(LocalDateTime.now());
+
+        Product saved = productRepository.save(product);
+
+        return mapToResponse(saved);
+    }
+
     // Mapping
     private ProductResponse mapToResponse(Product product) {
         ProductResponse response = new ProductResponse();
@@ -120,6 +158,7 @@ public class ProductService {
         response.setName(product.getName());
         response.setBrandName(product.getBrand() != null ? product.getBrand().getName() : null);
         response.setCategoryName(product.getCategory() != null ? product.getCategory().getName() : null);
+        response.setImageUrl(product.getImageUrl());
         response.setDescription(product.getDescription());
         response.setIngredients(product.getIngredients());
         response.setPrescriptionRequired(product.getPrescriptionRequired());
