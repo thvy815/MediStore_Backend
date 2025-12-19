@@ -5,6 +5,7 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 import com.example.medistore.entity.product.Product;
+import com.example.medistore.entity.product.ProductUnit;
 
 import jakarta.persistence.*;
 import lombok.*;
@@ -21,7 +22,15 @@ public class ProductBatch {
     @JoinColumn(name = "product_id", nullable = false)
     private Product product;
 
-    @Column(name = "batch_number", nullable = false, length = 100)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "supplier_id", nullable = false)
+    private Supplier supplier;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "product_unit_id", nullable = false)
+    private ProductUnit productUnit;
+
+    @Column(name = "batch_number", length = 100)
     private String batchNumber;
 
     @Column(name = "manufacture_date")
@@ -32,10 +41,6 @@ public class ProductBatch {
 
     @Column(name = "quantity", nullable = false)
     private Integer quantity; // theo đơn vị nhỏ nhất
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "supplier_id")
-    private Supplier supplier;
 
     @Builder.Default
     @Column(name = "status", length = 20)

@@ -9,6 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.example.medistore.entity.product.Product;
 import com.example.medistore.entity.product.ProductUnit;
+import com.example.medistore.repository.batch.BatchRepository;
 import com.example.medistore.repository.product.*;
 import com.example.medistore.dto.product.*;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +22,7 @@ public class ProductService {
     private final BrandRepository brandRepository;
     private final CategoryRepository categoryRepository;
     private final UnitRepository unitRepository;
+    private final BatchRepository batchRepository;
 
     private String normalizeCode(String code) {
         if (code == null || code.isBlank()) {
@@ -64,6 +66,7 @@ public class ProductService {
                         .conversionFactor(u.getConversionFactor())
                         .price(u.getPrice())
                         .isDefault(u.getIsDefault() != null ? u.getIsDefault() : false)
+                        .isActive(u.getIsActive() != null ? u.getIsActive() : true) 
                         .build();
 
                 productUnitRepository.save(unit);
@@ -77,6 +80,8 @@ public class ProductService {
     public ProductResponse updateProduct(UUID productId, ProductRequest request) {
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new RuntimeException("Product not found"));
+
+        boolean hasBatch = batchRepository.existsByProductId(productId);
 
         String code = normalizeCode(request.getCode());
 
@@ -96,29 +101,67 @@ public class ProductService {
         product.setIsActive(request.getIsActive());
         product.setUpdatedAt(LocalDateTime.now());
 
-        Product saved = productRepository.save(product);
+        productRepository.save(product);
 
         // --- UPDATE UNITS ---
         if (request.getUnits() != null) {
-            // 1) Xoá units cũ
-            productUnitRepository.deleteByProductId(productId);
 
-            // 2) Tạo units mới
-            for (ProductUnitRequest u : request.getUnits()) {
-                ProductUnit unit = ProductUnit.builder()
-                        .product(saved)
-                        .unit(unitRepository.findById(u.getUnitId())
-                                .orElseThrow(() -> new RuntimeException("Unit not found")))
-                        .conversionFactor(u.getConversionFactor())
-                        .price(u.getPrice())
-                        .isDefault(u.getIsDefault() != null ? u.getIsDefault() : false)
+            List<ProductUnit> existingUnits =
+                productUnitRepository.findByProductId(productId);
+
+            for (ProductUnitRequest reqUnit : request.getUnits()) {
+
+                // UPDATE UNIT CŨ
+                if (reqUnit.getUnitId() != null) {
+
+                    ProductUnit unit = existingUnits.stream()
+                        .filter(u -> u.getId().equals(reqUnit.getUnitId()))
+                        .findFirst()
+                        .orElseThrow(() -> new RuntimeException("Unit not found"));
+
+                    boolean unitUsedInBatch =
+                        batchRepository.existsByProductUnitId(unit.getId());
+
+                    // ❌ Không cho đổi conversionFactor nếu đã dùng batch
+                    if (unitUsedInBatch &&
+                        !unit.getConversionFactor().equals(reqUnit.getConversionFactor())) {
+
+                        throw new RuntimeException(
+                            "Cannot change conversion factor of unit already used in batch");
+                    }
+
+                    // ❌ Không cho đổi unit nhỏ nhất
+                    if (hasBatch && unit.getConversionFactor() == 1 &&
+                        !reqUnit.getConversionFactor().equals(1)) {
+
+                        throw new RuntimeException(
+                            "Cannot change base unit after product has batches");
+                    }
+
+                    // ✅ Cho update giá / active
+                    unit.setPrice(reqUnit.getPrice());
+                    unit.setIsDefault(reqUnit.getIsDefault());
+                    unit.setIsActive(reqUnit.getIsActive());
+
+                    productUnitRepository.save(unit);
+                }
+                // CREATE UNIT MỚI
+                else {
+                    ProductUnit newUnit = ProductUnit.builder()
+                        .product(product)
+                        .unit(unitRepository.findById(reqUnit.getUnitId())
+                            .orElseThrow(() -> new RuntimeException("Unit not found")))
+                        .conversionFactor(reqUnit.getConversionFactor())
+                        .price(reqUnit.getPrice())
+                        .isDefault(reqUnit.getIsDefault() != null ? reqUnit.getIsDefault() : false)
+                        .isActive(reqUnit.getIsActive() != null ? reqUnit.getIsActive() : true)
                         .build();
 
-                productUnitRepository.save(unit);
+                    productUnitRepository.save(newUnit);
+                }
             }
         }
-        
-        return mapToResponse(saved);
+        return mapToResponse(product);
     }
 
     // Delete
@@ -181,6 +224,7 @@ public class ProductService {
                     ur.setConversionFactor(u.getConversionFactor());
                     ur.setPrice(u.getPrice());
                     ur.setIsDefault(u.getIsDefault());
+                    ur.setIsActive(u.getIsActive());
                     return ur;
                 }).toList());
 

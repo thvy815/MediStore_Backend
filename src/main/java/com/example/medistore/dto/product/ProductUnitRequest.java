@@ -11,5 +11,6 @@ public class ProductUnitRequest {
     private Integer conversionFactor;
     private BigDecimal price;
     private Boolean isDefault;
+    private Boolean isActive;
 }
 

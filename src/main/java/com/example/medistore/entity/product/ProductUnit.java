@@ -31,4 +31,8 @@ public class ProductUnit {
     @Builder.Default
     @Column(name = "is_default")
     private Boolean isDefault = false;
+
+    @Builder.Default
+    @Column(name = "is_active")
+    private Boolean isActive = true;
 }
