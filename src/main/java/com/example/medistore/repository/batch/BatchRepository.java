@@ -32,4 +32,15 @@ public interface BatchRepository extends JpaRepository<ProductBatch, UUID> {
           AND b.expiryDate >= :today
     """)
     List<UUID> findProductIdsInStock(@Param("today") LocalDate today);
+
+    @Query("""
+        SELECT b
+        FROM ProductBatch b
+        WHERE b.product.id = :productId
+        AND b.status = 'valid'
+        AND b.quantity > 0
+        AND b.expiryDate >= :today
+        ORDER BY b.expiryDate ASC
+    """)
+    List<ProductBatch> findAvailableBatches(@Param("productId") UUID productId, @Param("today") LocalDate today);
 }

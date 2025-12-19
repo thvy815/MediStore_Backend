@@ -2,18 +2,23 @@ package com.example.medistore.service.order;
 
 import lombok.RequiredArgsConstructor;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.example.medistore.dto.order.CreateOrderRequest;
 import com.example.medistore.dto.order.OrderResponse;
+import com.example.medistore.entity.batch.ProductBatch;
 import com.example.medistore.entity.order.Order;
 import com.example.medistore.entity.order.OrderItem;
 import com.example.medistore.entity.product.Product;
 import com.example.medistore.entity.product.ProductUnit;
 import com.example.medistore.entity.user.User;
+import com.example.medistore.repository.batch.BatchRepository;
 import com.example.medistore.repository.order.OrderItemRepository;
 import com.example.medistore.repository.order.OrderRepository;
 import com.example.medistore.repository.product.ProductRepository;
@@ -26,11 +31,13 @@ import com.example.medistore.repository.user.UserRepository;
 public class OrderService {
 
     private final OrderRepository orderRepository;
-    private final OrderItemRepository itemRepository;
+    private final OrderItemRepository orderItemRepository;
     private final ProductRepository productRepository;
     private final ProductUnitRepository productUnitRepository;
     private final UserRepository userRepository;
+    private final BatchRepository batchRepository;
 
+    // ================= CREATE ORDER =================
     public OrderResponse createOrder(CreateOrderRequest request) {
 
         User user = userRepository.findById(request.getUserId())
@@ -44,54 +51,98 @@ public class OrderService {
 
         order = orderRepository.save(order);
 
-        double total = 0.0;
+        double totalAmount = 0.0;
 
         for (CreateOrderRequest.ItemRequest itemReq : request.getItems()) {
 
             Product product = productRepository.findById(itemReq.getProductId())
                     .orElseThrow(() -> new RuntimeException("Product not found"));
 
-            ProductUnit productUnit = productUnitRepository.findById(itemReq.getUnitId())
+            ProductUnit productUnit = productUnitRepository.findById(itemReq.getProductUnitId())
                     .orElseThrow(() -> new RuntimeException("Product unit not found"));
 
-            double unitPrice = productUnit.getPrice().doubleValue();
-            int quantity = itemReq.getQuantity();
+            int quantityInSmallestUnit =
+                    itemReq.getQuantity() * productUnit.getConversionFactor();
 
-            total += unitPrice * quantity;
+            List<ProductBatch> batches = batchRepository
+                    .findAvailableBatches(product.getId(), LocalDate.now());
 
-            OrderItem item = OrderItem.builder()
-                    .order(order)
-                    .product(product)
-                    .batch(null)  // TODO: chọn batch sau này
-                    .quantity(quantity)
-                    .unitPrice(unitPrice)
-                    .productUnit(productUnit)
-                    .build();
+            int remaining = quantityInSmallestUnit;
 
-            order.getItems().add(item);   
-            itemRepository.save(item);
+            for (ProductBatch batch : batches) {
+                if (remaining <= 0) break;
+
+                int deduct = Math.min(batch.getQuantity(), remaining);
+
+                // TRỪ KHO
+                batch.setQuantity(batch.getQuantity() - deduct);
+                remaining -= deduct;
+
+                if (batch.getQuantity() == 0) {
+                    batch.setStatus("out_of_stock");
+                }
+
+                batchRepository.save(batch);
+
+                // TẠO ORDER ITEM (gắn batch)
+                OrderItem orderItem = OrderItem.builder()
+                        .order(order)
+                        .product(product)
+                        .productUnit(productUnit)
+                        .batch(batch)
+                        .quantity(deduct)
+                        .unitPrice(productUnit.getPrice().doubleValue())
+                        .build();
+
+                order.getItems().add(orderItem);
+                orderItemRepository.save(orderItem);
+
+                totalAmount += deduct * productUnit.getPrice().doubleValue();
+            }
+
+            if (remaining > 0) {
+                throw new RuntimeException(
+                        "Not enough stock for product: " + product.getName());
+            }
         }
 
-        order.setTotalAmount(total);
+        order.setTotalAmount(totalAmount);
         orderRepository.save(order);
+
+        return mapToResponse(order);
+    }
+
+    // ================= GET ORDERS BY USER =================
+    @Transactional(readOnly = true)
+    public List<OrderResponse> getOrdersByUser(UUID userId) {
+
+        List<Order> orders =
+                orderRepository.findByUserIdOrderByCreatedAtDesc(userId);
+
+        return orders.stream()
+                .map(this::mapToResponse)
+                .toList();
+    }
+
+    // ================= MAPPING =================
+    private OrderResponse mapToResponse(Order order) {
 
         return OrderResponse.builder()
                 .orderId(order.getId())
                 .status(order.getStatus())
                 .totalAmount(order.getTotalAmount())
                 .items(
-                        order.getItems().stream().map(i ->
+                        order.getItems().stream().map(item ->
                                 OrderResponse.ItemResponse.builder()
-                                        .productId(i.getProduct().getId())
-                                        .productName(i.getProduct().getName())
-                                        .unitId(i.getProductUnit().getId())                       
-                                        .unitName(i.getProductUnit().getUnit().getName())        
-                                        .quantity(i.getQuantity())
-                                        .unitPrice(i.getUnitPrice())
+                                        .productId(item.getProduct().getId())
+                                        .productName(item.getProduct().getName())
+                                        .unitId(item.getProductUnit().getId())
+                                        .unitName(item.getProductUnit().getUnit().getName())
+                                        .quantity(item.getQuantity())
+                                        .unitPrice(item.getUnitPrice())
                                         .build()
                         ).toList()
                 )
                 .build();
     }
 }
-
