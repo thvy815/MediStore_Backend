@@ -32,7 +32,7 @@ public class OrderItem {
     private ProductBatch batch;
 
     @ManyToOne
-    @JoinColumn(name = "productUnit_id")
+    @JoinColumn(name = "product_unit_id")
     private ProductUnit productUnit;
 
     @Column(name = "quantity")

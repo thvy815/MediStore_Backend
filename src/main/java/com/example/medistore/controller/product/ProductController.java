@@ -40,9 +40,16 @@ public class ProductController {
         productService.deleteProduct(id);
     }
 
-    @GetMapping
+    //Admin APIs
+    @GetMapping("/admin")
     public List<ProductResponse> getAll() {
         return productService.getAllProducts();
+    }
+
+    //Customer APIs
+    @GetMapping("/customer/active")
+    public List<ProductResponse> getActiveProducts() {
+        return productService.getActiveProducts();
     }
 
     @GetMapping("/search")

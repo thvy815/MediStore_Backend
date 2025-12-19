@@ -13,4 +13,5 @@ public interface ProductRepository extends JpaRepository<Product, UUID> {
     List<Product> findByNameContainingIgnoreCase(String name);
     List<Product> findByCodeContainingIgnoreCase(String code);
     boolean existsByCode(String code);
+    List<Product> findByIsActiveTrue();
 }

@@ -132,9 +132,17 @@ public class ProductService {
                 .stream().map(this::mapToResponse).toList();
     }
 
-    // Get all
+    // Get all products (admin)
     public List<ProductResponse> getAllProducts() {
         return productRepository.findAll().stream().map(this::mapToResponse).toList();
+    }
+
+    // Get active products (customer)
+    public List<ProductResponse> getActiveProducts() {
+        return productRepository.findByIsActiveTrue()
+                .stream()
+                .map(this::mapToResponse)
+                .toList();
     }
 
     // Update product active

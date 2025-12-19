@@ -5,10 +5,13 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.example.medistore.dto.user.RegisterRequest;
+import com.example.medistore.entity.cart.Cart;
 import com.example.medistore.entity.user.Role;
 import com.example.medistore.entity.user.User;
+import com.example.medistore.repository.cart.CartRepository;
 import com.example.medistore.repository.user.RoleRepository;
 import com.example.medistore.repository.user.UserRepository;
 
@@ -25,7 +28,9 @@ public class UserService {
     private final UserRepository userRepo;
     private final RoleRepository roleRepo;
     private final PasswordEncoder passwordEncoder;
+    private final CartRepository cartRepository;
 
+    @Transactional
     public User register(RegisterRequest req) {
         if (userRepo.findByEmail(req.getEmail()).isPresent()) {
             throw new RuntimeException("Email already exists");
@@ -42,7 +47,13 @@ public class UserService {
                 .role(userRole)
                 .build();
 
-        return userRepo.save(user);
+        User savedUser = userRepo.save(user);
+
+        Cart cart = new Cart();
+        cart.setUser(savedUser);
+        cartRepository.save(cart);
+
+        return savedUser;
     }
 
     public String generateResetPasswordToken(String email) {
