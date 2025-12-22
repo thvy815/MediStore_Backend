@@ -8,6 +8,7 @@ import com.example.medistore.dto.user.ForgotPasswordRequest;
 import com.example.medistore.dto.user.LoginRequest;
 import com.example.medistore.dto.user.RegisterRequest;
 import com.example.medistore.dto.user.ResetPasswordRequest;
+import com.example.medistore.dto.user.UserInfoResponse;
 import com.example.medistore.entity.user.User;
 import com.example.medistore.service.user.JwtService;
 import com.example.medistore.service.user.MailService;
@@ -32,7 +33,19 @@ public class AuthController {
     public AuthResponse login(@RequestBody LoginRequest req) {
         User user = jwtService.authenticate(req.getEmail(), req.getPassword());
         String token = jwtService.generateToken(user);
-        return new AuthResponse(token);
+
+        UserInfoResponse userInfo = UserInfoResponse.builder()
+            .id(user.getId())
+            .email(user.getEmail())
+            .fullName(user.getFullName())
+            .roleId(user.getRole().getId())
+            .roleName(user.getRole().getName())
+            .build();
+
+        return AuthResponse.builder()
+            .token(token)
+            .user(userInfo)
+            .build();
     }
 
     @PostMapping("/forgot-password")

@@ -7,7 +7,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.example.medistore.dto.user.CreateUserRequest;
 import com.example.medistore.dto.user.RegisterRequest;
+import com.example.medistore.dto.user.UpdateUserRequest;
 import com.example.medistore.entity.cart.Cart;
 import com.example.medistore.entity.user.Role;
 import com.example.medistore.entity.user.User;
@@ -16,6 +18,7 @@ import com.example.medistore.repository.user.RoleRepository;
 import com.example.medistore.repository.user.UserRepository;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -94,5 +97,61 @@ public class UserService {
         user.setPassword(passwordEncoder.encode(newPass));
         userRepo.save(user);
     }
-}
 
+    @Transactional
+    public User createUserByAdmin(CreateUserRequest req) {
+
+        if (userRepo.findByEmail(req.getEmail()).isPresent()) {
+            throw new RuntimeException("Email already exists");
+        }
+
+        Role role = roleRepo.findById(req.getRoleId())
+                .orElseThrow(() -> new RuntimeException("Role not found"));
+
+        User user = User.builder()
+                .email(req.getEmail())
+                .password(passwordEncoder.encode(req.getPassword()))
+                .fullName(req.getFullName())
+                .phone(req.getPhone())
+                .role(role)
+                .build();
+
+        User savedUser = userRepo.save(user);
+
+        Cart cart = new Cart();
+        cart.setUser(savedUser);
+        cartRepository.save(cart);
+
+        return savedUser;
+    }
+
+    public User updateUser(UUID userId, UpdateUserRequest req) {
+
+        User user = userRepo.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        if (req.getFullName() != null) user.setFullName(req.getFullName());
+        if (req.getPhone() != null) user.setPhone(req.getPhone());
+
+        if (req.getRoleId() != null) {
+            Role role = roleRepo.findById(req.getRoleId())
+                    .orElseThrow(() -> new RuntimeException("Role not found"));
+            user.setRole(role);
+        }
+
+        return userRepo.save(user);
+    }
+
+    public void deleteUser(UUID userId) {
+        userRepo.deleteById(userId);
+    }
+
+    public User getUserById(UUID userId) {
+        return userRepo.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+    }
+
+    public List<User> getAllUsers() {
+        return userRepo.findAll();
+    }
+}
