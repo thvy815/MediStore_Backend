@@ -30,6 +30,10 @@ public class ProductBatch {
     @JoinColumn(name = "product_unit_id", nullable = false)
     private ProductUnit productUnit;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "law_code", referencedColumnName = "code")
+    private Law law;
+
     @Column(name = "batch_number", length = 100)
     private String batchNumber;
 

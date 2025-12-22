@@ -16,4 +16,6 @@ public class CreateBatchRequest {
     
     private UUID productUnitId; // đơn vị nhập kho
     private int quantity; // số lượng theo product unit
+    
+    private String lawCode; // mã văn bản pháp luật áp dụng
 }

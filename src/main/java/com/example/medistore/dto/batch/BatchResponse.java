@@ -19,6 +19,10 @@ public class BatchResponse {
     private UUID supplierId;
     private String supplierName;
 
+    // Law
+    private String lawCode;
+    private String lawTitle;
+
     // Batch info
     private String batchNumber;
     private LocalDate manufactureDate;

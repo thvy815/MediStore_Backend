@@ -26,6 +26,11 @@ public interface BatchRepository extends JpaRepository<ProductBatch, UUID> {
         LocalDate today
     );
 
+    List<ProductBatch> findByStatusAndQuantityLessThan(
+        String status,
+        Integer quantity
+    );
+
     @Query("""
         SELECT DISTINCT b.product.id
         FROM ProductBatch b
@@ -45,4 +50,14 @@ public interface BatchRepository extends JpaRepository<ProductBatch, UUID> {
         ORDER BY b.expiryDate ASC
     """)
     List<ProductBatch> findAvailableBatches(@Param("productId") UUID productId, @Param("today") LocalDate today);
+
+    @Query("""
+    SELECT b FROM ProductBatch b
+    WHERE b.status = 'valid'
+    AND b.expiryDate BETWEEN :now AND :warningDate
+    """)
+    List<ProductBatch> findExpiringSoon(
+        @Param("now") LocalDate now,
+        @Param("warningDate") LocalDate warningDate
+    );
 }

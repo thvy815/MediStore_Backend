@@ -61,6 +61,16 @@ public class BatchController {
         return ResponseEntity.noContent().build();
     }
 
+    @GetMapping("/expiring-soon")
+    public ResponseEntity<List<BatchResponse>> getExpiringSoon() {
+        return ResponseEntity.ok(batchService.getExpiringSoonBatches());
+    }
+
+    @GetMapping("/low-stock")
+    public ResponseEntity<List<BatchResponse>> getLowStock() {
+        return ResponseEntity.ok(batchService.getLowStockBatches());
+    }
+
     // Danh sách product còn hàng trong kho
     @GetMapping("/products/in-stock")
     public ResponseEntity<List<UUID>> getProductsInStock() {

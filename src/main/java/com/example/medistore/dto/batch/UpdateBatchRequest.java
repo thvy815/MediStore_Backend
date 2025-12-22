@@ -14,5 +14,7 @@ public class UpdateBatchRequest {
 
     private UUID productUnitId; // đơn vị nhập lại
     private Integer quantity;   // số lượng theo đơn vị này
+
+    private String lawCode; // mã văn bản pháp luật áp dụng
 }
 

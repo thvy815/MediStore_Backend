@@ -10,9 +10,11 @@ import org.springframework.transaction.annotation.Transactional;
 import com.example.medistore.dto.batch.BatchResponse;
 import com.example.medistore.dto.batch.CreateBatchRequest;
 import com.example.medistore.dto.batch.UpdateBatchRequest;
+import com.example.medistore.entity.batch.Law;
 import com.example.medistore.entity.batch.ProductBatch;
 import com.example.medistore.entity.product.ProductUnit;
 import com.example.medistore.repository.batch.BatchRepository;
+import com.example.medistore.repository.batch.LawRepository;
 import com.example.medistore.repository.batch.SupplierRepository;
 import com.example.medistore.repository.product.ProductUnitRepository;
 
@@ -26,6 +28,9 @@ public class BatchService {
     private final BatchRepository batchRepository;
     private final SupplierRepository supplierRepository;
     private final ProductUnitRepository productUnitRepository;
+    private final LawRepository lawRepository;
+    private static final int EXPIRY_WARNING_DAYS = 30;     // sắp hết hạn trong 30 ngày
+    private static final int LOW_STOCK_THRESHOLD = 100;    // <100 đơn vị nhỏ nhất
 
     /**
      * Nhập kho (tạo batch mới)
@@ -65,7 +70,13 @@ public class BatchService {
         batch.setExpiryDate(req.getExpiryDate());
         batch.setQuantity(totalSmallestUnitQty); // lưu đơn vị nhỏ nhất
         batch.setStatus("valid");
-
+        batch.setLaw(
+            req.getLawCode() == null
+                ? null
+                : lawRepository.findById(req.getLawCode())
+                    .orElseThrow(() -> new RuntimeException("Law not found"))
+        );
+        
         batchRepository.save(batch);
     }
 
@@ -136,6 +147,13 @@ public class BatchService {
             batch.setQuantity(smallestQty);
             batch.setProductUnit(unit); // lưu lại unit chỉnh sửa
         }
+
+        if (req.getLawCode() != null) {
+            Law law = lawRepository.findById(req.getLawCode())
+                .orElseThrow(() -> new RuntimeException("Law not found"));
+
+            batch.setLaw(law);
+        }
     }
 
     // Thu hồi lô hàng
@@ -144,6 +162,28 @@ public class BatchService {
             .orElseThrow(() -> new RuntimeException("Batch not found"));
 
         batch.setStatus("recalled");
+    }
+
+    // Lấy danh sách batch sắp hết hạn
+    @Transactional(readOnly = true)
+    public List<BatchResponse> getExpiringSoonBatches() {
+        LocalDate now = LocalDate.now();
+        LocalDate warningDate = now.plusDays(EXPIRY_WARNING_DAYS);
+
+        return batchRepository.findExpiringSoon(now, warningDate)
+            .stream()
+            .map(this::mapToResponse)
+            .toList();
+    }
+
+    // Lấy danh sách batch có tồn kho thấp
+    @Transactional(readOnly = true)
+    public List<BatchResponse> getLowStockBatches() {
+        return batchRepository
+            .findByStatusAndQuantityLessThan("valid", LOW_STOCK_THRESHOLD)
+            .stream()
+            .map(this::mapToResponse)
+            .toList();
     }
 
     /**
@@ -230,6 +270,12 @@ public class BatchService {
         // Supplier
         res.setSupplierId(batch.getSupplier().getId());
         res.setSupplierName(batch.getSupplier().getName());
+
+        // Law
+        if (batch.getLaw() != null) {
+            res.setLawCode(batch.getLaw().getCode());
+            res.setLawTitle(batch.getLaw().getTitle());
+        }
 
         // Lấy đơn vị nhỏ nhất
         ProductUnit smallestUnit = productUnitRepository
