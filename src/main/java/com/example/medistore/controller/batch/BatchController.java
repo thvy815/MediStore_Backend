@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.*;
 
 import com.example.medistore.dto.batch.BatchResponse;
 import com.example.medistore.dto.batch.CreateBatchRequest;
+import com.example.medistore.dto.batch.UpdateBatchRequest;
 import com.example.medistore.service.batch.BatchService;
 
 import lombok.RequiredArgsConstructor;
@@ -26,12 +27,38 @@ public class BatchController {
         return ResponseEntity.ok().build();
     }
 
-    // Lấy danh sách lô hàng của 1 sản phẩm
-    @GetMapping("/product/{productId}")
-    public ResponseEntity<List<BatchResponse>> getBatches(@PathVariable UUID productId) {
+    // Lấy thông tin lô hàng theo ID
+    @GetMapping("/{id}")
+    public ResponseEntity<BatchResponse> getById(@PathVariable UUID id) {
+        return ResponseEntity.ok(batchService.getBatchById(id));
+    }
+
+    // Lấy danh sách lô hàng với tùy chọn lọc
+    @GetMapping
+    public ResponseEntity<List<BatchResponse>> getAll(
+        @RequestParam(required = false) UUID productId,
+        @RequestParam(required = false) String status
+    ) {
         return ResponseEntity.ok(
-            batchService.getBatchesByProduct(productId)
+            batchService.getAllBatches(productId, status)
         );
+    }
+
+    // Cập nhật thông tin lô hàng
+    @PutMapping("/{id}")
+    public ResponseEntity<Void> update(
+        @PathVariable UUID id,
+        @RequestBody UpdateBatchRequest request
+    ) {
+        batchService.updateBatch(id, request);
+        return ResponseEntity.ok().build();
+    }
+
+    // Thu hồi lô hàng (xóa mềm --> status = "recalled")
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable UUID id) {
+        batchService.recallBatch(id);
+        return ResponseEntity.noContent().build();
     }
 
     // Danh sách product còn hàng trong kho

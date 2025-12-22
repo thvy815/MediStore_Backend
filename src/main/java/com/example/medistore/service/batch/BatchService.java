@@ -9,6 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.example.medistore.dto.batch.BatchResponse;
 import com.example.medistore.dto.batch.CreateBatchRequest;
+import com.example.medistore.dto.batch.UpdateBatchRequest;
 import com.example.medistore.entity.batch.ProductBatch;
 import com.example.medistore.entity.product.ProductUnit;
 import com.example.medistore.repository.batch.BatchRepository;
@@ -66,6 +67,83 @@ public class BatchService {
         batch.setStatus("valid");
 
         batchRepository.save(batch);
+    }
+
+    // Lấy thông tin lô hàng theo ID
+    @Transactional(readOnly = true)
+    public BatchResponse getBatchById(UUID id) {
+        ProductBatch batch = batchRepository.findById(id)
+            .orElseThrow(() -> new RuntimeException("Batch not found"));
+
+        return mapToResponse(batch);
+    }
+
+    // Lấy danh sách lô hàng với tùy chọn lọc
+    @Transactional(readOnly = true)
+    public List<BatchResponse> getAllBatches(UUID productId, String status) {
+
+        List<ProductBatch> batches;
+
+        if (productId != null && status != null) {
+            batches = batchRepository.findByProductIdAndStatus(productId, status);
+        } else if (productId != null) {
+            batches = batchRepository.findByProductId(productId);
+        } else if (status != null) {
+            batches = batchRepository.findByStatus(status);
+        } else {
+            batches = batchRepository.findAll();
+        }
+
+        return batches.stream().map(this::mapToResponse).toList();
+    }
+
+    // Cập nhật thông tin lô hàng
+    public void updateBatch(UUID id, UpdateBatchRequest req) {
+        ProductBatch batch = batchRepository.findById(id)
+            .orElseThrow(() -> new RuntimeException("Batch not found"));
+
+        if (req.getBatchNumber() != null)
+            batch.setBatchNumber(req.getBatchNumber());
+
+        if (req.getManufactureDate() != null)
+            batch.setManufactureDate(req.getManufactureDate());
+
+        if (req.getExpiryDate() != null) {
+            if (req.getExpiryDate().isBefore(LocalDate.now()))
+                throw new RuntimeException("Expiry date must be in the future");
+            batch.setExpiryDate(req.getExpiryDate());
+        }
+
+        // Cập nhật số lượng và đơn vị nhập lại
+        if (req.getProductUnitId() != null && req.getQuantity() != null) {
+            ProductUnit unit = productUnitRepository.findById(req.getProductUnitId())
+                .orElseThrow(() -> new RuntimeException("Product unit not found"));
+
+            if (!unit.getProduct().getId().equals(batch.getProduct().getId())) {
+                throw new RuntimeException("Product unit does not belong to product");
+            }
+
+            if (!unit.getIsActive()) {
+                throw new RuntimeException("Product unit is inactive");
+            }
+
+            if (req.getQuantity() <= 0) {
+                throw new RuntimeException("Quantity must be > 0");
+            }
+
+            int smallestQty = req.getQuantity() * unit.getConversionFactor();
+
+            batch.setQuantity(smallestQty);
+            batch.setProductUnit(unit); // lưu lại unit chỉnh sửa
+        }
+    }
+
+    // Thu hồi lô hàng
+    public void recallBatch(UUID id) {
+        ProductBatch batch = batchRepository.findById(id)
+            .orElseThrow(() -> new RuntimeException("Batch not found"));
+
+        batch.setStatus("recalled");
     }
 
     /**
@@ -134,12 +212,34 @@ public class BatchService {
     private BatchResponse mapToResponse(ProductBatch batch) {
 
         BatchResponse res = new BatchResponse();
+
+        // Batch
         res.setId(batch.getId());
         res.setBatchNumber(batch.getBatchNumber());
         res.setManufactureDate(batch.getManufactureDate());
         res.setExpiryDate(batch.getExpiryDate());
         res.setQuantity(batch.getQuantity());
         res.setStatus(batch.getStatus());
+        res.setCreatedAt(batch.getCreatedAt());
+        res.setUpdatedAt(batch.getUpdatedAt());
+
+        // Product
+        res.setProductId(batch.getProduct().getId());
+        res.setProductName(batch.getProduct().getName());
+        
+        // Supplier
+        res.setSupplierId(batch.getSupplier().getId());
+        res.setSupplierName(batch.getSupplier().getName());
+
+        // Lấy đơn vị nhỏ nhất
+        ProductUnit smallestUnit = productUnitRepository
+            .findByProductIdAndConversionFactor(
+                batch.getProduct().getId(),
+                1
+            )
+            .orElseThrow(() -> new RuntimeException("Smallest unit not found"));
+
+        res.setSmallestUnitName(smallestUnit.getUnit().getName());
 
         return res;
     }

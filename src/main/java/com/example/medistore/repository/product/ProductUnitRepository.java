@@ -1,6 +1,7 @@
 package com.example.medistore.repository.product;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -13,4 +14,5 @@ public interface ProductUnitRepository extends JpaRepository<ProductUnit, UUID> 
     List<ProductUnit> findByProductId(UUID productId);
     List<ProductUnit> findByProductIdAndIsActiveTrue(UUID productId);
     boolean existsByProductIdAndConversionFactor(UUID productId, Integer conversionFactor);
+    Optional<ProductUnit> findByProductIdAndConversionFactor(UUID productId, int conversionFactor);
 }

@@ -16,6 +16,8 @@ public interface BatchRepository extends JpaRepository<ProductBatch, UUID> {
     List<ProductBatch> findByProductId(UUID productId);
     boolean existsByProductId(UUID productId);
     boolean existsByProductUnitId(UUID productUnitId);
+    List<ProductBatch> findByStatus(String status);
+    List<ProductBatch> findByProductIdAndStatus(UUID productId, String status);
 
     // Lấy các lô hàng còn hạn sử dụng cho một sản phẩm cụ thể, sắp xếp theo ngày hết hạn tăng dần
     List<ProductBatch> findByProductIdAndStatusAndExpiryDateAfterOrderByExpiryDateAsc(
