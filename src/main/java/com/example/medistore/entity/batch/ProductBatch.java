@@ -1,5 +1,6 @@
 package com.example.medistore.entity.batch;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -43,12 +44,18 @@ public class ProductBatch {
     @Column(name = "expiry_date", nullable = false)
     private LocalDate expiryDate;
 
-    @Column(name = "quantity", nullable = false)
-    private Integer quantity; // theo đơn vị nhỏ nhất
+    @Column(name = "quantity_imported", nullable = false)
+    private Integer quantityImported;   // số lượng nhập ban đầu (đơn vị nhỏ nhất)
+
+    @Column(name = "quantity_remaining", nullable = false)
+    private Integer quantityRemaining;  // số lượng còn tồn (đơn vị nhỏ nhất)
+
+    @Column(nullable = false)
+    private BigDecimal importPrice; // giá nhập theo đơn vị nhỏ nhất
 
     @Builder.Default
     @Column(name = "status", length = 20)
-    private String status = "valid"; // valid, expired, recalled
+    private String status = "valid"; // valid, expired, recalled, out_of_stock
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;

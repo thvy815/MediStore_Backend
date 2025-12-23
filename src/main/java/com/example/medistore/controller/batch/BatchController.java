@@ -71,9 +71,14 @@ public class BatchController {
         return ResponseEntity.ok(batchService.getLowStockBatches());
     }
 
-    // Danh sách product còn hàng trong kho
-    @GetMapping("/products/in-stock")
-    public ResponseEntity<List<UUID>> getProductsInStock() {
-        return ResponseEntity.ok(batchService.getProductIdsInStock());
+    // // Danh sách product còn hàng trong kho
+    // @GetMapping("/products/in-stock")
+    // public ResponseEntity<List<UUID>> getProductsInStock() {
+    //     return ResponseEntity.ok(batchService.getProductIdsInStock());
+    // }
+
+    @GetMapping("/in-stock")
+    public ResponseEntity<List<BatchResponse>> getInStock() {
+        return ResponseEntity.ok(batchService.getInStockBatches());
     }
 }

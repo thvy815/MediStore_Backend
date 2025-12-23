@@ -1,5 +1,7 @@
 package com.example.medistore.service.batch;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
@@ -47,6 +49,10 @@ public class BatchService {
             throw new RuntimeException("Quantity must be > 0");
         }
 
+        if (req.getImportPrice().compareTo(BigDecimal.ZERO) <= 0) {
+            throw new RuntimeException("Import price must be > 0");
+        }
+
         if (unit.getConversionFactor() <= 0) {
             throw new RuntimeException("Invalid conversion factor");
         }
@@ -61,6 +67,13 @@ public class BatchService {
 
         int totalSmallestUnitQty = req.getQuantity() * unit.getConversionFactor();
 
+        BigDecimal importPriceSmallest =
+            req.getImportPrice().divide(
+                BigDecimal.valueOf(unit.getConversionFactor()),
+                2,
+                RoundingMode.HALF_UP
+            );
+
         ProductBatch batch = new ProductBatch();
         batch.setProduct(unit.getProduct());
         batch.setProductUnit(unit);
@@ -68,7 +81,9 @@ public class BatchService {
         batch.setBatchNumber(req.getBatchNumber());
         batch.setManufactureDate(req.getManufactureDate());
         batch.setExpiryDate(req.getExpiryDate());
-        batch.setQuantity(totalSmallestUnitQty); // lưu đơn vị nhỏ nhất
+        batch.setQuantityImported(totalSmallestUnitQty);
+        batch.setQuantityRemaining(totalSmallestUnitQty);
+        batch.setImportPrice(importPriceSmallest);
         batch.setStatus("valid");
         batch.setLaw(
             req.getLawCode() == null
@@ -110,48 +125,34 @@ public class BatchService {
 
     // Cập nhật thông tin lô hàng
     public void updateBatch(UUID id, UpdateBatchRequest req) {
+
         ProductBatch batch = batchRepository.findById(id)
             .orElseThrow(() -> new RuntimeException("Batch not found"));
 
-        if (req.getBatchNumber() != null)
-            batch.setBatchNumber(req.getBatchNumber());
-
-        if (req.getManufactureDate() != null)
-            batch.setManufactureDate(req.getManufactureDate());
-
-        if (req.getExpiryDate() != null) {
-            if (req.getExpiryDate().isBefore(LocalDate.now()))
-                throw new RuntimeException("Expiry date must be in the future");
-            batch.setExpiryDate(req.getExpiryDate());
+        // ❌ Không cho sửa batch đã recall
+        if ("recalled".equals(batch.getStatus())) {
+            throw new RuntimeException("Cannot update recalled batch");
         }
 
-        // Cập nhật số lượng và đơn vị nhập lại
-        if (req.getProductUnitId() != null && req.getQuantity() != null) {
-            ProductUnit unit = productUnitRepository.findById(req.getProductUnitId())
-                .orElseThrow(() -> new RuntimeException("Product unit not found"));
+        // ========== METADATA ==========
+        if (req.getBatchNumber() != null) {
+            batch.setBatchNumber(req.getBatchNumber());
+        }
 
-            if (!unit.getProduct().getId().equals(batch.getProduct().getId())) {
-                throw new RuntimeException("Product unit does not belong to product");
+        if (req.getManufactureDate() != null) {
+            batch.setManufactureDate(req.getManufactureDate());
+        }
+
+        if (req.getExpiryDate() != null) {
+            if (req.getExpiryDate().isBefore(LocalDate.now())) {
+                throw new RuntimeException("Expiry date must be in the future");
             }
-
-            if (!unit.getIsActive()) {
-                throw new RuntimeException("Product unit is inactive");
-            }
-
-            if (req.getQuantity() <= 0) {
-                throw new RuntimeException("Quantity must be > 0");
-            }
-
-            int smallestQty = req.getQuantity() * unit.getConversionFactor();
-
-            batch.setQuantity(smallestQty);
-            batch.setProductUnit(unit); // lưu lại unit chỉnh sửa
+            batch.setExpiryDate(req.getExpiryDate());
         }
 
         if (req.getLawCode() != null) {
             Law law = lawRepository.findById(req.getLawCode())
                 .orElseThrow(() -> new RuntimeException("Law not found"));
-
             batch.setLaw(law);
         }
     }
@@ -180,7 +181,15 @@ public class BatchService {
     @Transactional(readOnly = true)
     public List<BatchResponse> getLowStockBatches() {
         return batchRepository
-            .findByStatusAndQuantityLessThan("valid", LOW_STOCK_THRESHOLD)
+            .findByStatusAndQuantityRemainingLessThan("valid", LOW_STOCK_THRESHOLD)
+            .stream()
+            .map(this::mapToResponse)
+            .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<BatchResponse> getInStockBatches() {
+        return batchRepository.findBatchesInStock(LocalDate.now())
             .stream()
             .map(this::mapToResponse)
             .toList();
@@ -221,8 +230,8 @@ public class BatchService {
 
             if (remaining <= 0) break;
 
-            int used = Math.min(batch.getQuantity(), remaining);
-            batch.setQuantity(batch.getQuantity() - used);
+            int used = Math.min(batch.getQuantityRemaining(), remaining);
+            batch.setQuantityRemaining(batch.getQuantityRemaining() - used);
             remaining -= used;
         }
 
@@ -258,7 +267,9 @@ public class BatchService {
         res.setBatchNumber(batch.getBatchNumber());
         res.setManufactureDate(batch.getManufactureDate());
         res.setExpiryDate(batch.getExpiryDate());
-        res.setQuantity(batch.getQuantity());
+        res.setQuantityImported(batch.getQuantityImported());
+        res.setQuantityRemaining(batch.getQuantityRemaining());
+        res.setImportPrice(batch.getImportPrice());
         res.setStatus(batch.getStatus());
         res.setCreatedAt(batch.getCreatedAt());
         res.setUpdatedAt(batch.getUpdatedAt());

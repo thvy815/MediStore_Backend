@@ -1,5 +1,6 @@
 package com.example.medistore.dto.batch;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -29,8 +30,11 @@ public class BatchResponse {
     private LocalDate expiryDate;
     
     // Inventory
-    private int quantity; // theo đơn vị nhỏ nhất
+    private int quantityImported;   // số lượng lúc nhập
+    private int quantityRemaining;  // số lượng tồn
     private String smallestUnitName; 
+    private BigDecimal importPrice; // giá nhập theo đơn vị nhỏ nhất
+    
     private String status;
 
     // Audit

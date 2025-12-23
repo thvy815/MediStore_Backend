@@ -26,16 +26,16 @@ public interface BatchRepository extends JpaRepository<ProductBatch, UUID> {
         LocalDate today
     );
 
-    List<ProductBatch> findByStatusAndQuantityLessThan(
+    List<ProductBatch> findByStatusAndQuantityRemainingLessThan(
         String status,
-        Integer quantity
+        Integer quantityRemaining
     );
 
     @Query("""
         SELECT DISTINCT b.product.id
         FROM ProductBatch b
         WHERE b.status = 'valid'
-          AND b.quantity > 0
+          AND b.quantityRemaining > 0
           AND b.expiryDate >= :today
     """)
     List<UUID> findProductIdsInStock(@Param("today") LocalDate today);
@@ -45,19 +45,28 @@ public interface BatchRepository extends JpaRepository<ProductBatch, UUID> {
         FROM ProductBatch b
         WHERE b.product.id = :productId
         AND b.status = 'valid'
-        AND b.quantity > 0
+        AND b.quantityRemaining > 0
         AND b.expiryDate >= :today
         ORDER BY b.expiryDate ASC
     """)
     List<ProductBatch> findAvailableBatches(@Param("productId") UUID productId, @Param("today") LocalDate today);
 
     @Query("""
-    SELECT b FROM ProductBatch b
-    WHERE b.status = 'valid'
-    AND b.expiryDate BETWEEN :now AND :warningDate
+        SELECT b FROM ProductBatch b
+        WHERE b.status = 'valid'
+        AND b.expiryDate BETWEEN :now AND :warningDate
     """)
     List<ProductBatch> findExpiringSoon(
         @Param("now") LocalDate now,
         @Param("warningDate") LocalDate warningDate
     );
+
+    @Query("""
+        SELECT b FROM ProductBatch b
+        WHERE b.status = 'valid'
+        AND b.quantityRemaining > 0
+        AND b.expiryDate >= :today
+    """)
+    List<ProductBatch> findBatchesInStock(LocalDate today);
+
 }

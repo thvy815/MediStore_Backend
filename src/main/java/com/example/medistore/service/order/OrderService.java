@@ -72,13 +72,17 @@ public class OrderService {
             for (ProductBatch batch : batches) {
                 if (remaining <= 0) break;
 
-                int deduct = Math.min(batch.getQuantity(), remaining);
+                int available = batch.getQuantityRemaining();
+                if (available <= 0) continue;
+
+                int deduct = Math.min(available, remaining);
 
                 // TRỪ KHO
-                batch.setQuantity(batch.getQuantity() - deduct);
+                batch.setQuantityRemaining(available - deduct);
                 remaining -= deduct;
 
-                if (batch.getQuantity() == 0) {
+                // Nếu hết hàng thì update status batch
+                if (batch.getQuantityRemaining() == 0) {
                     batch.setStatus("out_of_stock");
                 }
 
