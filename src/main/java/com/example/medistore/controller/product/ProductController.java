@@ -18,6 +18,12 @@ import lombok.RequiredArgsConstructor;
 public class ProductController {
     private final ProductService productService;
 
+    // Lấy chi tiết sản phẩm theo ID 
+    @GetMapping("/{id}")
+    public ProductResponse getProductById(@PathVariable UUID id) {
+        return productService.getProductById(id);
+    }
+
     // Thêm sản phẩm mới (kèm theo unit của sản phẩm đó)
     @PostMapping 
     public ProductResponse create(@RequestBody ProductRequest request) {

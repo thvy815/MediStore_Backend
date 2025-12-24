@@ -26,6 +26,8 @@ public interface BatchRepository extends JpaRepository<ProductBatch, UUID> {
         LocalDate today
     );
 
+    List<ProductBatch> findByProductIdAndStatusAndExpiryDateAfter(UUID productId, String status, LocalDate date);
+
     List<ProductBatch> findByStatusAndQuantityRemainingLessThan(
         String status,
         Integer quantityRemaining

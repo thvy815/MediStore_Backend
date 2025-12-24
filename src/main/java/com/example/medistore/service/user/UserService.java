@@ -39,6 +39,10 @@ public class UserService {
             throw new RuntimeException("Email already exists");
         }
 
+        if (userRepo.findByPhone(req.getPhone()).isPresent()) {
+            throw new RuntimeException("Phone already exists");
+        }
+
         Role userRole = roleRepo.findByName("Customer")
                 .orElseThrow(() -> new RuntimeException("Customer role not found"));
 

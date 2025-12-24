@@ -188,6 +188,14 @@ public class ProductService {
                 .toList();
     }
 
+    // Get product detail by ID
+    public ProductResponse getProductById(UUID productId) {
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new RuntimeException("Product not found"));
+
+        return mapToResponse(product);
+    }
+
     // Update product active
     public ProductResponse updateProductActive(UUID productId, Boolean isActive) {
         Product product = productRepository.findById(productId)
