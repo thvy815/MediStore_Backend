@@ -223,16 +223,26 @@ public class ProductService {
         response.setPrescriptionRequired(product.getPrescriptionRequired());
         response.setIsActive(product.getIsActive());
 
+        // Tính tổng stock available cho product
+        int totalAvailableStock = batchRepository
+            .findAvailableBatches(product.getId(), java.time.LocalDate.now())
+            .stream()
+            .mapToInt(batch -> batch.getQuantityRemaining())
+            .sum();
+
         response.setUnits(productUnitRepository.findByProductId(product.getId())
                 .stream()
                 .map(u -> {
                     ProductUnitResponse ur = new ProductUnitResponse();
                     ur.setId(u.getId());
+                    ur.setUnitId(u.getUnit().getId());
                     ur.setUnitName(u.getUnit().getName());
                     ur.setConversionFactor(u.getConversionFactor());
                     ur.setPrice(u.getPrice());
                     ur.setIsDefault(u.getIsDefault());
                     ur.setIsActive(u.getIsActive());
+                    // Tính available quantity theo unit này
+                    ur.setAvailableQuantity(totalAvailableStock / u.getConversionFactor());
                     return ur;
                 }).toList());
 

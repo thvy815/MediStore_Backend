@@ -2,6 +2,8 @@ package com.example.medistore.entity.order;
 
 import jakarta.persistence.*;
 import lombok.*;
+
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.*;
 
@@ -28,6 +30,22 @@ public class Order {
 
     @Column(name = "total_amount")
     private double totalAmount;
+
+    @Column(name = "shipping_name", length = 100)
+    private String shippingName;
+
+    @Column(name = "shipping_phone", length = 20)
+    private String shippingPhone;
+
+    @Column(name = "shipping_address", columnDefinition = "TEXT")
+    private String shippingAddress;
+
+    @ManyToOne
+    @JoinColumn(name = "delivery_method_id")
+    private DeliveryMethod deliveryMethod;
+
+    @Column(name = "shipping_fee", precision = 12, scale = 2)
+    private BigDecimal shippingFee;
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;

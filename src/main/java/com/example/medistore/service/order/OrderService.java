@@ -2,6 +2,7 @@ package com.example.medistore.service.order;
 
 import lombok.RequiredArgsConstructor;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -13,8 +14,14 @@ import org.springframework.transaction.annotation.Transactional;
 import com.example.medistore.dto.order.CreateOrderRequest;
 import com.example.medistore.dto.order.OrderResponse;
 import com.example.medistore.entity.batch.ProductBatch;
+import com.example.medistore.entity.order.DeliveryMethod;
 import com.example.medistore.entity.order.Order;
 import com.example.medistore.entity.order.OrderItem;
+import com.example.medistore.entity.order.Payment;
+import com.example.medistore.entity.order.PaymentMethod;
+import com.example.medistore.repository.order.DeliveryMethodRepository;
+import com.example.medistore.repository.order.PaymentMethodRepository;
+import com.example.medistore.repository.order.PaymentRepository;
 import com.example.medistore.entity.product.Product;
 import com.example.medistore.entity.product.ProductUnit;
 import com.example.medistore.entity.user.User;
@@ -36,6 +43,9 @@ public class OrderService {
     private final ProductUnitRepository productUnitRepository;
     private final UserRepository userRepository;
     private final BatchRepository batchRepository;
+    private final DeliveryMethodRepository deliveryMethodRepository;
+    private final PaymentMethodRepository paymentMethodRepository;
+    private final PaymentRepository paymentRepository;
 
     // ================= CREATE ORDER =================
     public OrderResponse createOrder(CreateOrderRequest request) {
@@ -43,10 +53,35 @@ public class OrderService {
         User user = userRepository.findById(request.getUserId())
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
+        DeliveryMethod deliveryMethod = deliveryMethodRepository.findById(request.getDeliveryMethodId())
+                .orElseThrow(() -> new RuntimeException("Delivery method not found"));
+
+        PaymentMethod paymentMethod = paymentMethodRepository.findById(request.getPaymentMethodId())
+                .orElseThrow(() -> new RuntimeException("Payment method not found"));
+
+        // Autofill shipping info if not provided
+        String shippingName = request.getShippingName();
+        String shippingPhone = request.getShippingPhone();
+        String shippingAddress = request.getShippingAddress();
+        if (shippingName == null || shippingName.isEmpty()) {
+            shippingName = user.getFullName();
+        }
+        if (shippingPhone == null || shippingPhone.isEmpty()) {
+            shippingPhone = user.getPhone();
+        }
+        if (shippingAddress == null || shippingAddress.isEmpty()) {
+            shippingAddress = user.getAddress();
+        }
+
         Order order = Order.builder()
                 .user(user)
                 .status("pending")
                 .items(new ArrayList<>())
+                .shippingName(shippingName)
+                .shippingPhone(shippingPhone)
+                .shippingAddress(shippingAddress)
+                .deliveryMethod(deliveryMethod)
+                .shippingFee(deliveryMethod.getBaseFee())
                 .build();
 
         order = orderRepository.save(order);
@@ -113,6 +148,16 @@ public class OrderService {
         order.setTotalAmount(totalAmount);
         orderRepository.save(order);
 
+        // Create payment
+        BigDecimal paymentAmount = BigDecimal.valueOf(totalAmount).add(order.getShippingFee());
+        Payment payment = Payment.builder()
+                .order(order)
+                .amount(paymentAmount)
+                .paymentMethod(paymentMethod)
+                .status("pending")
+                .build();
+        paymentRepository.save(payment);
+
         return mapToResponse(order);
     }
 
@@ -135,6 +180,12 @@ public class OrderService {
                 .orderId(order.getId())
                 .status(order.getStatus())
                 .totalAmount(order.getTotalAmount())
+                .shippingName(order.getShippingName())
+                .shippingPhone(order.getShippingPhone())
+                .shippingAddress(order.getShippingAddress())
+                .deliveryMethodId(order.getDeliveryMethod() != null ? order.getDeliveryMethod().getId() : null)
+                .deliveryMethodName(order.getDeliveryMethod() != null ? order.getDeliveryMethod().getName() : null)
+                .shippingFee(order.getShippingFee())
                 .items(
                         order.getItems().stream().map(item ->
                                 OrderResponse.ItemResponse.builder()

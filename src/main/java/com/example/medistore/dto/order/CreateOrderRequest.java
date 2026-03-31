@@ -11,6 +11,17 @@ public class CreateOrderRequest {
 
     private List<ItemRequest> items;
 
+    // Shipping info
+    private String shippingName;
+    private String shippingPhone;
+    private String shippingAddress;
+
+    // Delivery
+    private UUID deliveryMethodId;
+
+    // Payment
+    private UUID paymentMethodId;
+
     @Data
     public static class ItemRequest {
         private UUID productId;

@@ -154,7 +154,7 @@ public class CartService {
     private int getAvailableStock(UUID productId) {
         // Lấy tất cả batch hợp lệ của sản phẩm còn tồn kho
         return batchRepository
-            .findByProductIdAndStatusAndExpiryDateAfter(productId, "valid", LocalDate.now())
+            .findAvailableBatches(productId, LocalDate.now())
             .stream()
             .mapToInt(batch -> batch.getQuantityRemaining()) // quantityRemaining đã là smallest unit
             .sum();

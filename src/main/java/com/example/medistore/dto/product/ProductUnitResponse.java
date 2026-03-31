@@ -14,4 +14,5 @@ public class ProductUnitResponse {
     private BigDecimal price;
     private Boolean isDefault;
     private Boolean isActive;
+    private Integer availableQuantity; // Số lượng có thể mua theo unit này
 }
