@@ -10,37 +10,55 @@ import java.util.UUID;
 @Entity
 @Table(name = "payments")
 @Data
-@NoArgsConstructor @AllArgsConstructor @Builder
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class Payment {
 
     @Id
     @GeneratedValue
-    @Column(name = "id", updatable = false, nullable = false)
     private UUID id;
 
     @ManyToOne
     @JoinColumn(name = "order_id", nullable = false)
     private Order order;
 
-    @Column(name = "amount", precision = 12, scale = 2, nullable = false)
-    private BigDecimal amount; // = total_price + shipping_fee - discount
+    @Column(nullable = false, precision = 12, scale = 2)
+    private BigDecimal amount;
 
     @ManyToOne
     @JoinColumn(name = "payment_method_id", nullable = false)
     private PaymentMethod paymentMethod;
 
-    @Builder.Default
-    @Column(name = "status", length = 50, nullable = false)
-    private String status = "pending"; // pending, success, failed
+    @Column(nullable = false)
+    private String status;
+    // pending success failed
 
-    @Column(name = "transaction_ref", length = 255)
-    private String transactionRef; // mã tham chiếu giao dịch
+    @Column(unique = true)
+    private String transactionRef;
 
-    @Column(name = "created_at", nullable = false)
+    @Column(length = 1000)
+    private String paymentUrl;
+
+    private LocalDateTime paidAt;
+
     private LocalDateTime createdAt;
 
     @PrePersist
-    protected void onCreate() {
+    public void prePersist() {
+
         createdAt = LocalDateTime.now();
+
+        // default status
+        if (status == null) {
+            status = "pending";
+        }
+
+        // AUTO GET AMOUNT FROM ORDER
+        if (order != null) {
+
+            amount = BigDecimal.valueOf(
+                    order.getTotalAmount());
+        }
     }
 }
