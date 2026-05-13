@@ -61,4 +61,13 @@ public class PaymentController {
 
         return "Payment success";
     }
+
+    @PostMapping("/success/{txnRef}")
+    public ResponseEntity<?> paymentSuccess(
+            @PathVariable String txnRef) {
+
+        paymentService.paymentSuccess(txnRef);
+
+        return ResponseEntity.ok().build();
+    }
 }

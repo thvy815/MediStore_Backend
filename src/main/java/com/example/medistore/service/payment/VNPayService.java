@@ -33,7 +33,7 @@ public class VNPayService {
                         HttpServletRequest request) throws Exception {
 
                 // Mã giao dịch unique
-                String txnRef = String.valueOf(System.currentTimeMillis());
+                String txnRef = payment.getTransactionRef();
 
                 // Timezone Việt Nam
                 Calendar calendar = Calendar.getInstance(
