@@ -16,172 +16,175 @@ import java.util.*;
 @Service
 public class VNPayService {
 
-    @Value("${vnpay.tmn-code}")
-    private String tmnCode;
+        @Value("${vnpay.tmn-code}")
+        private String tmnCode;
 
-    @Value("${vnpay.hash-secret}")
-    private String hashSecret;
+        @Value("${vnpay.hash-secret}")
+        private String hashSecret;
 
-    @Value("${vnpay.pay-url}")
-    private String payUrl;
+        @Value("${vnpay.pay-url}")
+        private String payUrl;
 
-    @Value("${vnpay.return-url}")
-    private String returnUrl;
+        @Value("${vnpay.return-url}")
+        private String returnUrl;
 
-    @Value("${vnpay.ipn-url}")
-    private String ipnUrl;
+        public String createPaymentUrl(
+                        Payment payment,
+                        HttpServletRequest request) throws Exception {
 
-    public String createPaymentUrl(
-            Payment payment,
-            HttpServletRequest request) throws Exception {
+                // Mã giao dịch unique
+                String txnRef = String.valueOf(System.currentTimeMillis());
 
-        // Mã giao dịch
-        String txnRef = String.valueOf(System.currentTimeMillis());
+                // Timezone Việt Nam
+                Calendar calendar = Calendar.getInstance(
+                                TimeZone.getTimeZone("Asia/Ho_Chi_Minh"));
 
-        // Timezone VN
-        Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone("Etc/GMT+7"));
+                // Ngày tạo
+                String createDate = new SimpleDateFormat("yyyyMMddHHmmss")
+                                .format(calendar.getTime());
 
-        String createDate = new SimpleDateFormat("yyyyMMddHHmmss")
-                .format(calendar.getTime());
+                // Hết hạn sau 15 phút
+                calendar.add(Calendar.MINUTE, 15);
 
-        calendar.add(Calendar.MINUTE, 15);
+                String expireDate = new SimpleDateFormat("yyyyMMddHHmmss")
+                                .format(calendar.getTime());
 
-        String expireDate = new SimpleDateFormat("yyyyMMddHHmmss")
-                .format(calendar.getTime());
+                // Amount * 100
+                String amount = payment.getAmount()
+                                .multiply(BigDecimal.valueOf(100))
+                                .toBigInteger()
+                                .toString();
 
-        // Params
-        Map<String, String> params = new TreeMap<>();
+                // Params VNPay
+                Map<String, String> params = new TreeMap<>();
 
-        params.put("vnp_Version", "2.1.0");
-        params.put("vnp_Command", "pay");
+                params.put("vnp_Version", "2.1.0");
+                params.put("vnp_Command", "pay");
 
-        params.put("vnp_TmnCode", tmnCode);
+                params.put("vnp_TmnCode", tmnCode);
 
-        // amount * 100
-        String amount = payment.getAmount()
-                .multiply(new BigDecimal(100))
-                .toBigInteger()
-                .toString();
+                params.put("vnp_Amount", amount);
 
-        params.put("vnp_Amount", amount);
+                params.put("vnp_CurrCode", "VND");
 
-        params.put("vnp_CurrCode", "VND");
+                params.put("vnp_TxnRef", txnRef);
 
-        params.put("vnp_TxnRef", txnRef);
+                params.put("vnp_OrderInfo", "Thanh toan don hang");
 
-        params.put("vnp_OrderInfo", "Thanh toan don hang");
+                params.put("vnp_OrderType", "other");
 
-        params.put("vnp_OrderType", "other");
+                params.put("vnp_Locale", "vn");
 
-        params.put("vnp_Locale", "vn");
+                params.put("vnp_ReturnUrl", returnUrl);
 
-        params.put("vnp_ReturnUrl", returnUrl);
+                params.put("vnp_IpAddr", getIpAddress(request));
 
-        // IP thật
-        params.put("vnp_IpAddr", getIpAddress(request));
+                params.put("vnp_CreateDate", createDate);
 
-        params.put("vnp_CreateDate", createDate);
+                params.put("vnp_ExpireDate", expireDate);
 
-        params.put("vnp_ExpireDate", expireDate);
+                // Build hashData + query
+                StringBuilder hashData = new StringBuilder();
 
-        // Build query + hashData
-        List<String> fieldNames = new ArrayList<>(params.keySet());
+                StringBuilder query = new StringBuilder();
 
-        Collections.sort(fieldNames);
+                Iterator<Map.Entry<String, String>> itr = params.entrySet().iterator();
 
-        StringBuilder hashData = new StringBuilder();
+                while (itr.hasNext()) {
 
-        StringBuilder query = new StringBuilder();
+                        Map.Entry<String, String> entry = itr.next();
 
-        for (int i = 0; i < fieldNames.size(); i++) {
+                        String fieldName = entry.getKey();
 
-            String fieldName = fieldNames.get(i);
+                        String fieldValue = entry.getValue();
 
-            String fieldValue = params.get(fieldName);
+                        if (fieldValue != null && !fieldValue.isEmpty()) {
 
-            if (fieldValue != null && !fieldValue.isEmpty()) {
+                                String encodedValue = URLEncoder.encode(
+                                                fieldValue,
+                                                StandardCharsets.US_ASCII.toString());
 
-                String encodedValue = URLEncoder.encode(
-                        fieldValue,
-                        StandardCharsets.US_ASCII);
+                                // HASH DATA
+                                hashData.append(fieldName)
+                                                .append("=")
+                                                .append(encodedValue);
 
-                // HASH DATA
-                hashData.append(fieldName)
-                        .append("=")
-                        .append(encodedValue);
+                                // QUERY
+                                query.append(fieldName)
+                                                .append("=")
+                                                .append(encodedValue);
 
-                // QUERY
-                query.append(fieldName)
-                        .append("=")
-                        .append(encodedValue);
-
-                if (i < fieldNames.size() - 1) {
-                    query.append("&");
-                    hashData.append("&");
+                                if (itr.hasNext()) {
+                                        hashData.append("&");
+                                        query.append("&");
+                                }
+                        }
                 }
-            }
+
+                // Tạo secure hash
+                String secureHash = hmacSHA512(
+                                hashSecret,
+                                hashData.toString());
+
+                // Add secure hash
+                query.append("&vnp_SecureHash=")
+                                .append(secureHash);
+
+                // URL thanh toán
+                String paymentUrl = payUrl + "?" + query;
+
+                // DEBUG
+                System.out.println("=========== VNPAY DEBUG ===========");
+                System.out.println("HASH DATA:");
+                System.out.println(hashData);
+
+                System.out.println("SECURE HASH:");
+                System.out.println(secureHash);
+
+                System.out.println("PAYMENT URL:");
+                System.out.println(paymentUrl);
+
+                System.out.println("===================================");
+
+                return paymentUrl;
         }
 
-        // Create secure hash
-        String secureHash = hmacSHA512(
-                hashSecret,
-                hashData.toString());
+        private String hmacSHA512(
+                        String key,
+                        String data) throws Exception {
 
-        // Add hash type
-        query.append("&vnp_SecureHashType=HmacSHA512");
+                Mac hmac512 = Mac.getInstance("HmacSHA512");
 
-        // Add secure hash
-        query.append("&vnp_SecureHash=")
-                .append(secureHash);
+                SecretKeySpec secretKeySpec = new SecretKeySpec(
+                                key.getBytes(StandardCharsets.UTF_8),
+                                "HmacSHA512");
 
-        String paymentUrl = payUrl + "?" + query;
+                hmac512.init(secretKeySpec);
 
-        // DEBUG
-        System.out.println("=========== VNPAY DEBUG ===========");
-        System.out.println("HASH DATA: " + hashData);
-        System.out.println("SECURE HASH: " + secureHash);
-        System.out.println("PAYMENT URL: " + paymentUrl);
-        System.out.println("===================================");
+                byte[] bytes = hmac512.doFinal(
+                                data.getBytes(StandardCharsets.UTF_8));
 
-        return paymentUrl;
-    }
+                StringBuilder hash = new StringBuilder();
 
-    private String hmacSHA512(
-            String key,
-            String data) throws Exception {
+                for (byte b : bytes) {
+                        hash.append(String.format("%02x", b));
+                }
 
-        Mac hmac512 = Mac.getInstance("HmacSHA512");
-
-        SecretKeySpec secretKeySpec = new SecretKeySpec(
-                key.getBytes(StandardCharsets.UTF_8),
-                "HmacSHA512");
-
-        hmac512.init(secretKeySpec);
-
-        byte[] bytes = hmac512.doFinal(
-                data.getBytes(StandardCharsets.UTF_8));
-
-        StringBuilder hash = new StringBuilder();
-
-        for (byte b : bytes) {
-            hash.append(String.format("%02x", b));
+                return hash.toString();
         }
 
-        return hash.toString();
-    }
+        private String getIpAddress(HttpServletRequest request) {
 
-    private String getIpAddress(HttpServletRequest request) {
+                String ipAddress = request.getHeader("X-FORWARDED-FOR");
 
-        String ipAddress = request.getHeader("X-FORWARDED-FOR");
+                if (ipAddress == null || ipAddress.isEmpty()) {
+                        ipAddress = request.getRemoteAddr();
+                }
 
-        if (ipAddress == null || ipAddress.isEmpty()) {
-            ipAddress = request.getRemoteAddr();
+                if (ipAddress == null || ipAddress.isEmpty()) {
+                        ipAddress = "127.0.0.1";
+                }
+
+                return ipAddress;
         }
-
-        if (ipAddress == null || ipAddress.isEmpty()) {
-            ipAddress = "127.0.0.1";
-        }
-
-        return ipAddress;
-    }
 }

@@ -53,12 +53,5 @@ public class Payment {
         if (status == null) {
             status = "pending";
         }
-
-        // AUTO GET AMOUNT FROM ORDER
-        if (order != null) {
-
-            amount = BigDecimal.valueOf(
-                    order.getTotalAmount());
-        }
     }
 }

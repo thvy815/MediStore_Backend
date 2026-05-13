@@ -12,6 +12,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -20,85 +21,86 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class PaymentService {
 
-    private final PaymentRepository paymentRepository;
+        private final PaymentRepository paymentRepository;
 
-    private final PaymentMethodRepository paymentMethodRepository;
+        private final PaymentMethodRepository paymentMethodRepository;
 
-    private final OrderRepository orderRepository;
+        private final OrderRepository orderRepository;
 
-    private final VNPayService vnPayService;
+        private final VNPayService vnPayService;
 
-    public PaymentResponse createPayment(
-            CreatePaymentRequest request,
-            HttpServletRequest httpRequest) throws Exception {
+        public PaymentResponse createPayment(
+                        CreatePaymentRequest request,
+                        HttpServletRequest httpRequest) throws Exception {
 
-        PaymentMethod method = paymentMethodRepository
-                .findById(request.getPaymentMethodId())
-                .orElseThrow();
+                PaymentMethod method = paymentMethodRepository
+                                .findById(request.getPaymentMethodId())
+                                .orElseThrow();
 
-        Order order = orderRepository
-                .findById(request.getOrderId())
-                .orElseThrow();
+                Order order = orderRepository
+                                .findById(request.getOrderId())
+                                .orElseThrow();
 
-        // ONE transaction ref ONLY
-        String txnRef = UUID.randomUUID().toString();
+                // ONE transaction ref ONLY
+                String txnRef = UUID.randomUUID().toString();
 
-        Payment payment = Payment.builder()
-                .status("pending")
-                .transactionRef(txnRef)
-                .paymentMethod(method)
-                .order(order)
-                .build();
+                Payment payment = Payment.builder()
+                                .status("pending")
+                                .transactionRef(txnRef)
+                                .paymentMethod(method)
+                                .order(order)
+                                .amount(request.getAmount())
+                                .build();
 
-        payment = paymentRepository.save(payment);
+                payment = paymentRepository.save(payment);
 
-        String paymentUrl = vnPayService.createPaymentUrl(
-                payment,
-                httpRequest);
+                String paymentUrl = vnPayService.createPaymentUrl(
+                                payment,
+                                httpRequest);
 
-        payment.setPaymentUrl(paymentUrl);
+                payment.setPaymentUrl(paymentUrl);
 
-        payment = paymentRepository.save(payment);
+                payment = paymentRepository.save(payment);
 
-        return map(payment);
-    }
+                return map(payment);
+        }
 
-    public void paymentSuccess(
-            String transactionRef) {
+        public void paymentSuccess(
+                        String transactionRef) {
 
-        Payment payment = paymentRepository
-                .findByTransactionRef(transactionRef)
-                .orElseThrow();
+                Payment payment = paymentRepository
+                                .findByTransactionRef(transactionRef)
+                                .orElseThrow();
 
-        payment.setStatus("success");
+                payment.setStatus("success");
 
-        payment.setPaidAt(LocalDateTime.now());
+                payment.setPaidAt(LocalDateTime.now());
 
-        paymentRepository.save(payment);
-    }
+                paymentRepository.save(payment);
+        }
 
-    public List<PaymentResponse> history(
-            UUID orderId) {
+        public List<PaymentResponse> history(
+                        UUID orderId) {
 
-        return paymentRepository
-                .findByOrderId(orderId)
-                .stream()
-                .map(this::map)
-                .toList();
-    }
+                return paymentRepository
+                                .findByOrderId(orderId)
+                                .stream()
+                                .map(this::map)
+                                .toList();
+        }
 
-    private PaymentResponse map(
-            Payment payment) {
+        private PaymentResponse map(
+                        Payment payment) {
 
-        return PaymentResponse.builder()
-                .id(payment.getId())
-                .amount(payment.getAmount())
-                .status(payment.getStatus())
-                .paymentUrl(payment.getPaymentUrl())
-                .transactionRef(payment.getTransactionRef())
-                .paymentMethod(
-                        payment.getPaymentMethod().getName())
-                .createdAt(payment.getCreatedAt())
-                .build();
-    }
+                return PaymentResponse.builder()
+                                .id(payment.getId())
+                                .amount(payment.getAmount())
+                                .status(payment.getStatus())
+                                .paymentUrl(payment.getPaymentUrl())
+                                .transactionRef(payment.getTransactionRef())
+                                .paymentMethod(
+                                                payment.getPaymentMethod().getName())
+                                .createdAt(payment.getCreatedAt())
+                                .build();
+        }
 }
