@@ -25,7 +25,7 @@ public class MailService {
         SimpleMailMessage message = new SimpleMailMessage();
         message.setFrom(from);
         message.setTo(to);
-        message.setSubject("Reset your password");
+        message.setSubject("[MediStore] Reset your password");
         message.setText("""
                 You requested a password reset.
 
