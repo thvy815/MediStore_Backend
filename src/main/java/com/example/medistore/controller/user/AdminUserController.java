@@ -10,6 +10,7 @@ import com.example.medistore.service.user.UserService;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/admin/users")
@@ -54,8 +55,15 @@ public class AdminUserController {
                 .email(user.getEmail())
                 .fullName(user.getFullName())
                 .phone(user.getPhone())
-                .roleId(user.getRole().getId())
-                .roleName(user.getRole().getName())
+                .roles(
+                    user.getRoles()
+                            .stream()
+                            .map(role -> RoleResponse.builder()
+                                    .id(role.getId())
+                                    .name(role.getName())
+                                    .build())
+                            .collect(Collectors.toSet())
+                )
                 .build();
     }
 }

@@ -12,6 +12,7 @@ public class MailService {
 
     private final JavaMailSender mailSender;
 
+    // Email gửi đi sẽ là email đã cấu hình trong application.properties
     @Value("${spring.mail.username}")
     private String from;
 
@@ -35,6 +36,32 @@ public class MailService {
                 """);
 
         mailSender.send(message);
+    }
+
+    public void sendVerificationMail(String to, String token) {
+        try {
+            String verifyLink =
+                    "http://localhost:8080/api/auth/verify-email?token=" + token;
+
+            SimpleMailMessage message = new SimpleMailMessage();
+
+            message.setFrom(from);
+            message.setTo(to);
+            message.setSubject("[MediStore] Verify your email");
+
+            message.setText("""
+                    Welcome to MediStore.
+
+                    Click the link below to verify your account:
+
+                    """ + verifyLink);
+
+            mailSender.send(message);
+            System.out.println("Verification email sent to " + to + " successfully");
+        } catch (Exception e) {  
+            System.out.println("Failed to send verification email to " + to + ": " + e.getMessage());
+            e.printStackTrace();
+        }
     }
 }
 

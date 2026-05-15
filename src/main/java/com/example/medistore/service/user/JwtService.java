@@ -10,10 +10,12 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import com.example.medistore.entity.user.Role;
 import com.example.medistore.entity.user.User;
 import com.example.medistore.repository.user.UserRepository;
 
 import java.util.Date;
+import java.util.List;
 
 import javax.crypto.SecretKey;
 
@@ -35,13 +37,27 @@ public class JwtService {
     }
 
     // 🔐 Tạo JWT token
-    public String generateToken(User user) {
+    public String generateAccessToken(User user) {
+        List<String> roles = user.getRoles()
+            .stream()
+            .map(Role::getName)
+            .toList();
+        
+        List<String> permissions = user.getRoles()
+            .stream()
+            .flatMap(role -> role.getPermissions().stream())
+            .map(permission -> permission.getName())
+            .distinct()
+            .toList();
+
         return Jwts.builder()
-                .subject(user.getEmail())
-                .issuedAt(new Date())
-                .expiration(new Date(System.currentTimeMillis() + expirationMs))
-                .signWith(getSigningKey())
-                .compact();
+            .subject(user.getEmail())
+            .claim("roles", roles)
+            .claim("permissions", permissions)
+            .issuedAt(new Date())
+            .expiration(new Date(System.currentTimeMillis() + expirationMs))
+            .signWith(getSigningKey())
+            .compact();
     }
 
     // 🔍 Lấy email từ token
