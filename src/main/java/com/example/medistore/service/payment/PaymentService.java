@@ -2,6 +2,7 @@ package com.example.medistore.service.payment;
 
 import com.example.medistore.dto.order.CreatePaymentRequest;
 import com.example.medistore.dto.order.PaymentResponse;
+import com.example.medistore.dto.order.TransactionResponse;
 import com.example.medistore.entity.order.Order;
 import com.example.medistore.entity.order.Payment;
 import com.example.medistore.entity.order.PaymentMethod;
@@ -88,6 +89,15 @@ public class PaymentService {
                                 .toList();
         }
 
+        public List<TransactionResponse> getAllHistory() {
+
+                return paymentRepository
+                                .findAll()
+                                .stream()
+                                .map(this::mapTransaction)
+                                .toList();
+        }
+
         private PaymentResponse map(
                         Payment payment) {
 
@@ -99,6 +109,23 @@ public class PaymentService {
                                 .transactionRef(payment.getTransactionRef())
                                 .paymentMethod(
                                                 payment.getPaymentMethod().getName())
+                                .createdAt(payment.getCreatedAt())
+                                .build();
+        }
+
+        private TransactionResponse mapTransaction(
+                        Payment payment) {
+
+                return TransactionResponse.builder()
+                                .id(payment.getId())
+                                .customerName(
+                                                payment.getOrder()
+                                                                .getUser()
+                                                                .getFullName())
+                                .amount(payment.getAmount())
+                                .status(payment.getStatus())
+                                .transactionRef(payment.getTransactionRef())
+                                .paymentMethod(payment.getPaymentMethod().getName())
                                 .createdAt(payment.getCreatedAt())
                                 .build();
         }
