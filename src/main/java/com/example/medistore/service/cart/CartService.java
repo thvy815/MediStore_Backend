@@ -10,6 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.example.medistore.dto.cart.AddToCartRequest;
 import com.example.medistore.dto.cart.CartItemResponse;
 import com.example.medistore.dto.cart.UpdateCartItemRequest;
+import com.example.medistore.dto.order.CreateOrderRequest;
 import com.example.medistore.entity.cart.Cart;
 import com.example.medistore.entity.cart.CartItem;
 import com.example.medistore.entity.product.ProductUnit;
@@ -150,6 +151,20 @@ public class CartService {
 
         return res;
     }
+
+    public void removeOrderedItems(UUID userId, List<CreateOrderRequest.ItemRequest> items) {
+
+    Cart cart = cartRepository.findByUserId(userId)
+        .orElseThrow(() -> new RuntimeException("Cart not found"));
+
+    for (CreateOrderRequest.ItemRequest item : items) {
+        cartItemRepository.deleteByCartIdAndProductIdAndProductUnitId(
+            cart.getId(),
+            item.getProductId(),
+            item.getProductUnitId()
+        );
+    }
+}
 
     private int getAvailableStock(UUID productId) {
         // Lấy tất cả batch hợp lệ của sản phẩm còn tồn kho
