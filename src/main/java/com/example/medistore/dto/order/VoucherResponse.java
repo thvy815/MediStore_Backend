@@ -11,6 +11,7 @@ import lombok.Data;
 @Data
 @Builder
 public class VoucherResponse {
+
     private UUID id;
     private String code;
     private String description;
@@ -23,5 +24,10 @@ public class VoucherResponse {
     private Integer usageLimit;
     private Integer usagePerUser;
     private String status;
+
+    // tracking
+    private Integer usedCount;
+    private Integer remainingTurns;
+
     private LocalDateTime createdAt;
 }

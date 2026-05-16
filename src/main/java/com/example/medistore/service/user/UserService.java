@@ -32,6 +32,9 @@ public class UserService {
     private final RoleRepository roleRepo;
     private final PasswordEncoder passwordEncoder;
     private final CartRepository cartRepository;
+    private final MailService mailService;
+
+    public static final String ROLE_CUSTOMER = "Customer";
 
     @Transactional
     public User register(RegisterRequest req) {
@@ -43,7 +46,11 @@ public class UserService {
             throw new RuntimeException("Phone already exists");
         }
 
-        Role userRole = roleRepo.findByName("Customer")
+        if (req.getPassword() == null || req.getPassword().isBlank()) {
+            throw new RuntimeException("Password cannot be empty");
+        }
+
+        Role customerRole = roleRepo.findByName(ROLE_CUSTOMER)
                 .orElseThrow(() -> new RuntimeException("Customer role not found"));
 
         User user = User.builder()
@@ -51,16 +58,42 @@ public class UserService {
                 .password(passwordEncoder.encode(req.getPassword()))
                 .fullName(req.getFullName())
                 .phone(req.getPhone())
-                .role(userRole)
+                .verificationToken(UUID.randomUUID().toString())
+                .verificationTokenExpiry(LocalDateTime.now().plusHours(24))
                 .build();
+
+        user.getRoles().add(customerRole);
 
         User savedUser = userRepo.save(user);
 
+        // Tạo cart rỗng cho user mới
         Cart cart = new Cart();
         cart.setUser(savedUser);
         cartRepository.save(cart);
 
+        // send verify email
+        mailService.sendVerificationMail(
+                savedUser.getEmail(),
+                savedUser.getVerificationToken()
+        );
+
         return savedUser;
+    }
+
+    public void verifyEmail(String token) {
+        User user = userRepo.findByVerificationToken(token)
+                .orElseThrow(() -> new RuntimeException("Invalid token"));
+
+        if (user.getVerificationTokenExpiry().isBefore(LocalDateTime.now())) {
+            throw new RuntimeException("Verification token expired");
+        }
+
+        user.setIsVerified(true);
+
+        user.setVerificationToken(null);
+        user.setVerificationTokenExpiry(null);
+
+        userRepo.save(user);
     }
 
     public String generateResetPasswordToken(String email) {
@@ -109,16 +142,22 @@ public class UserService {
             throw new RuntimeException("Email already exists");
         }
 
-        Role role = roleRepo.findById(req.getRoleId())
-                .orElseThrow(() -> new RuntimeException("Role not found"));
-
         User user = User.builder()
-                .email(req.getEmail())
-                .password(passwordEncoder.encode(req.getPassword()))
-                .fullName(req.getFullName())
-                .phone(req.getPhone())
-                .role(role)
-                .build();
+            .email(req.getEmail())
+            .password(passwordEncoder.encode(req.getPassword()))
+            .fullName(req.getFullName())
+            .phone(req.getPhone())
+            .build();
+
+        if (req.getRoleIds() != null && !req.getRoleIds().isEmpty()) {
+            List<Role> roles = roleRepo.findAllById(req.getRoleIds());
+
+            if (roles.size() != req.getRoleIds().size()) {
+                throw new RuntimeException("One or more roles not found");
+            }
+
+            user.getRoles().addAll(roles);
+        }
 
         User savedUser = userRepo.save(user);
 
@@ -137,17 +176,26 @@ public class UserService {
         if (req.getFullName() != null) user.setFullName(req.getFullName());
         if (req.getPhone() != null) user.setPhone(req.getPhone());
 
-        if (req.getRoleId() != null) {
-            Role role = roleRepo.findById(req.getRoleId())
-                    .orElseThrow(() -> new RuntimeException("Role not found"));
-            user.setRole(role);
+        if (req.getRoleIds() != null) {
+
+            List<Role> roles = roleRepo.findAllById(req.getRoleIds());
+
+            if (roles.size() != req.getRoleIds().size()) {
+                throw new RuntimeException("One or more roles not found");
+            }
+
+            user.getRoles().clear();
+            user.getRoles().addAll(roles);
         }
 
         return userRepo.save(user);
     }
 
     public void deleteUser(UUID userId) {
-        userRepo.deleteById(userId);
+        User user = userRepo.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        user.setIsDeleted(true);
     }
 
     public User getUserById(UUID userId) {

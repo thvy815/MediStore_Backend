@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.medistore.dto.order.ApplyVoucherResponse;
+import com.example.medistore.dto.order.VoucherHistoryResponse;
 import com.example.medistore.dto.order.VoucherRequest;
 import com.example.medistore.dto.order.VoucherResponse;
 import com.example.medistore.service.order.VoucherService;
@@ -48,8 +49,7 @@ public class VoucherController {
     @PutMapping("/{id}")
     public VoucherResponse updateVoucher(
             @PathVariable UUID id,
-            @RequestBody VoucherRequest request
-    ) {
+            @RequestBody VoucherRequest request) {
         return voucherService.updateVoucher(id, request);
     }
 
@@ -64,8 +64,15 @@ public class VoucherController {
             @RequestParam String code,
             @RequestParam BigDecimal productAmount,
             @RequestParam BigDecimal shippingFee,
-            @RequestParam UUID userId
-    ) {
+            @RequestParam UUID userId) {
         return voucherService.checkVoucher(code, productAmount, shippingFee, userId);
+    }
+
+    @GetMapping("/{voucherId}/history")
+    public List<VoucherHistoryResponse> getVoucherHistory(
+            @PathVariable UUID voucherId) {
+        return voucherService
+                .getVoucherHistory(
+                        voucherId);
     }
 }

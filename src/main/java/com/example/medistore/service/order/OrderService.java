@@ -23,6 +23,7 @@ import com.example.medistore.entity.product.Product;
 import com.example.medistore.entity.product.ProductUnit;
 import com.example.medistore.entity.user.User;
 import com.example.medistore.repository.batch.BatchRepository;
+import com.example.medistore.repository.cart.CartItemRepository;
 import com.example.medistore.repository.order.DeliveryMethodRepository;
 import com.example.medistore.repository.order.OrderItemRepository;
 import com.example.medistore.repository.order.OrderRepository;
@@ -40,218 +41,251 @@ import lombok.RequiredArgsConstructor;
 @Transactional
 public class OrderService {
 
-    private final OrderRepository orderRepository;
-    private final OrderItemRepository orderItemRepository;
-    private final ProductRepository productRepository;
-    private final ProductUnitRepository productUnitRepository;
-    private final UserRepository userRepository;
-    private final BatchRepository batchRepository;
-    private final DeliveryMethodRepository deliveryMethodRepository;
-    private final PaymentMethodRepository paymentMethodRepository;
-    private final PaymentRepository paymentRepository;
+        private final OrderRepository orderRepository;
+        private final OrderItemRepository orderItemRepository;
+        private final ProductRepository productRepository;
+        private final ProductUnitRepository productUnitRepository;
+        private final UserRepository userRepository;
+        private final BatchRepository batchRepository;
+        private final DeliveryMethodRepository deliveryMethodRepository;
+        private final PaymentMethodRepository paymentMethodRepository;
+        private final PaymentRepository paymentRepository;
+        private final CartItemRepository cartItemRepository;
 
-    private final VoucherService voucherService;
-    private final OrderVoucherRepository orderVoucherRepository;
+        private final VoucherService voucherService;
+        private final OrderVoucherRepository orderVoucherRepository;
 
-    // ================= CREATE ORDER =================
-    public OrderResponse createOrder(CreateOrderRequest request) {
+        // ================= CREATE ORDER =================
+        public OrderResponse createOrder(CreateOrderRequest request) {
 
-        User user = userRepository.findById(request.getUserId())
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                User user = userRepository.findById(request.getUserId())
+                                .orElseThrow(() -> new RuntimeException("User not found"));
 
-        DeliveryMethod deliveryMethod = deliveryMethodRepository.findById(request.getDeliveryMethodId())
-                .orElseThrow(() -> new RuntimeException("Delivery method not found"));
+                DeliveryMethod deliveryMethod = deliveryMethodRepository.findById(request.getDeliveryMethodId())
+                                .orElseThrow(() -> new RuntimeException("Delivery method not found"));
 
-        PaymentMethod paymentMethod = paymentMethodRepository.findById(request.getPaymentMethodId())
-                .orElseThrow(() -> new RuntimeException("Payment method not found"));
+                PaymentMethod paymentMethod = paymentMethodRepository.findById(request.getPaymentMethodId())
+                                .orElseThrow(() -> new RuntimeException("Payment method not found"));
 
-        String shippingName = request.getShippingName();
-        String shippingPhone = request.getShippingPhone();
-        String shippingAddress = request.getShippingAddress();
+                String shippingName = request.getShippingName();
+                String shippingPhone = request.getShippingPhone();
+                String shippingAddress = request.getShippingAddress();
 
-        if (shippingName == null || shippingName.isEmpty()) {
-            shippingName = user.getFullName();
-        }
-
-        if (shippingPhone == null || shippingPhone.isEmpty()) {
-            shippingPhone = user.getPhone();
-        }
-
-        if (shippingAddress == null || shippingAddress.isEmpty()) {
-            shippingAddress = user.getAddress();
-        }
-
-        Order order = Order.builder()
-                .user(user)
-                .status("pending")
-                .items(new ArrayList<>())
-                .shippingName(shippingName)
-                .shippingPhone(shippingPhone)
-                .shippingAddress(shippingAddress)
-                .deliveryMethod(deliveryMethod)
-                .shippingFee(deliveryMethod.getBaseFee())
-                .build();
-
-        order = orderRepository.save(order);
-
-        BigDecimal productAmount = BigDecimal.ZERO;
-
-        for (CreateOrderRequest.ItemRequest itemReq : request.getItems()) {
-
-            Product product = productRepository.findById(itemReq.getProductId())
-                    .orElseThrow(() -> new RuntimeException("Product not found"));
-
-            ProductUnit productUnit = productUnitRepository.findById(itemReq.getProductUnitId())
-                    .orElseThrow(() -> new RuntimeException("Product unit not found"));
-
-            int quantityInSmallestUnit =
-                    itemReq.getQuantity() * productUnit.getConversionFactor();
-
-            List<ProductBatch> batches = batchRepository
-                    .findAvailableBatches(product.getId(), LocalDate.now());
-
-            int remaining = quantityInSmallestUnit;
-
-            for (ProductBatch batch : batches) {
-                if (remaining <= 0) break;
-
-                int available = batch.getQuantityRemaining();
-                if (available <= 0) continue;
-
-                int deduct = Math.min(available, remaining);
-
-                batch.setQuantityRemaining(available - deduct);
-                remaining -= deduct;
-
-                if (batch.getQuantityRemaining() == 0) {
-                    batch.setStatus("out_of_stock");
+                if (shippingName == null || shippingName.isEmpty()) {
+                        shippingName = user.getFullName();
                 }
 
-                batchRepository.save(batch);
+                if (shippingPhone == null || shippingPhone.isEmpty()) {
+                        shippingPhone = user.getPhone();
+                }
 
-                OrderItem orderItem = OrderItem.builder()
-                        .order(order)
-                        .product(product)
-                        .productUnit(productUnit)
-                        .batch(batch)
-                        .quantity(deduct)
-                        .unitPrice(productUnit.getPrice().doubleValue())
-                        .build();
+                if (shippingAddress == null || shippingAddress.isEmpty()) {
+                        shippingAddress = user.getAddress();
+                }
 
-                order.getItems().add(orderItem);
-                orderItemRepository.save(orderItem);
-            }
+                Order order = Order.builder()
+                                .user(user)
+                                .status("pending")
+                                .items(new ArrayList<>())
+                                .shippingName(shippingName)
+                                .shippingPhone(shippingPhone)
+                                .shippingAddress(shippingAddress)
+                                .deliveryMethod(deliveryMethod)
+                                .shippingFee(deliveryMethod.getBaseFee())
+                                .build();
 
-            if (remaining > 0) {
-                throw new RuntimeException(
-                        "Not enough stock for product: " + product.getName());
-            }
+                order = orderRepository.save(order);
 
-            BigDecimal itemAmount = productUnit.getPrice()
-                    .multiply(BigDecimal.valueOf(itemReq.getQuantity()));
+                BigDecimal productAmount = BigDecimal.ZERO;
 
-            productAmount = productAmount.add(itemAmount);
+                for (CreateOrderRequest.ItemRequest itemReq : request.getItems()) {
+
+                        Product product = productRepository.findById(itemReq.getProductId())
+                                        .orElseThrow(() -> new RuntimeException("Product not found"));
+
+                        ProductUnit productUnit = productUnitRepository.findById(itemReq.getProductUnitId())
+                                        .orElseThrow(() -> new RuntimeException("Product unit not found"));
+
+                        int quantityInSmallestUnit = itemReq.getQuantity() * productUnit.getConversionFactor();
+
+                        List<ProductBatch> batches = batchRepository
+                                        .findAvailableBatches(product.getId(), LocalDate.now());
+
+                        int remaining = quantityInSmallestUnit;
+
+                        for (ProductBatch batch : batches) {
+                                if (remaining <= 0)
+                                        break;
+
+                                int available = batch.getQuantityRemaining();
+                                if (available <= 0)
+                                        continue;
+
+                                int deduct = Math.min(available, remaining);
+
+                                batch.setQuantityRemaining(available - deduct);
+                                remaining -= deduct;
+
+                                if (batch.getQuantityRemaining() == 0) {
+                                        batch.setStatus("out_of_stock");
+                                }
+
+                                batchRepository.save(batch);
+
+                                OrderItem orderItem = OrderItem.builder()
+                                                .order(order)
+                                                .product(product)
+                                                .productUnit(productUnit)
+                                                .batch(batch)
+                                                .quantity(itemReq.getQuantity())
+                                                .unitPrice(productUnit.getPrice().doubleValue())
+                                                .build();
+
+                                order.getItems().add(orderItem);
+                                orderItemRepository.save(orderItem);
+                        }
+
+                        if (remaining > 0) {
+                                throw new RuntimeException(
+                                                "Not enough stock for product: " + product.getName());
+                        }
+
+                        BigDecimal itemAmount = productUnit.getPrice()
+                                        .multiply(BigDecimal.valueOf(itemReq.getQuantity()));
+
+                        productAmount = productAmount.add(itemAmount);
+                }
+
+                // ================= TOTAL = PRODUCT + SHIPPING - VOUCHER =================
+                BigDecimal shippingFee = order.getShippingFee() != null
+                                ? order.getShippingFee()
+                                : BigDecimal.ZERO;
+
+                BigDecimal orderAmountBeforeDiscount = productAmount.add(shippingFee);
+
+                BigDecimal discountAmount = BigDecimal.ZERO;
+                Voucher appliedVoucher = null;
+                System.out.println("===== DEBUG ORDER =====");
+                System.out.println("Voucher code: " + request.getVoucherCode());
+                System.out.println("Before discount: " + orderAmountBeforeDiscount);
+
+                if (request.getVoucherCode() != null && !request.getVoucherCode().isBlank()) {
+
+                        appliedVoucher = voucherService.validateVoucher(
+                                        request.getVoucherCode(),
+                                        orderAmountBeforeDiscount,
+                                        user.getId());
+
+                        discountAmount = voucherService.calculateDiscount(
+                                        appliedVoucher,
+                                        productAmount,
+                                        shippingFee);
+                        System.out.println("Applied voucher: " + appliedVoucher.getCode());
+                        System.out.println("Discount amount: " + discountAmount);
+                }
+
+                BigDecimal finalAmount = orderAmountBeforeDiscount.subtract(discountAmount);
+
+                if (finalAmount.compareTo(BigDecimal.ZERO) < 0) {
+                        finalAmount = BigDecimal.ZERO;
+                }
+
+                // totalAmount lưu số tiền cuối cùng cần trả
+                order.setTotalAmount(finalAmount.doubleValue());
+                orderRepository.save(order);
+
+                if (appliedVoucher != null) {
+                        OrderVoucher orderVoucher = OrderVoucher.builder()
+                                        .order(order)
+                                        .voucher(appliedVoucher)
+                                        .discountAmount(discountAmount)
+                                        .build();
+
+                        orderVoucherRepository.save(orderVoucher);
+                }
+
+                Payment payment = Payment.builder()
+                                .order(order)
+                                .amount(finalAmount)
+                                .paymentMethod(paymentMethod)
+                                .status("pending")
+                                .build();
+
+                paymentRepository.save(payment);
+
+                System.out.println("===== REMOVE CART ITEMS =====");
+
+                for (CreateOrderRequest.ItemRequest item : request.getItems()) {
+                        System.out.println("cartItemId = " + item.getCartItemId());
+
+                        if (item.getCartItemId() != null) {
+                                cartItemRepository.deleteById(item.getCartItemId());
+                                System.out.println("Deleted cart item: " + item.getCartItemId());
+                        }
+                }
+
+                return mapToResponse(order);
         }
 
-        // ================= TOTAL = PRODUCT + SHIPPING - VOUCHER =================
-        BigDecimal shippingFee = order.getShippingFee() != null
-                ? order.getShippingFee()
-                : BigDecimal.ZERO;
+        // ================= GET ORDERS BY USER =================
+        @Transactional(readOnly = true)
+        public List<OrderResponse> getOrdersByUser(UUID userId) {
 
-        BigDecimal orderAmountBeforeDiscount = productAmount.add(shippingFee);
+                List<Order> orders = orderRepository.findByUserIdOrderByCreatedAtDesc(userId);
 
-        BigDecimal discountAmount = BigDecimal.ZERO;
-        Voucher appliedVoucher = null;
-        System.out.println("===== DEBUG ORDER =====");
-System.out.println("Voucher code: " + request.getVoucherCode());
-System.out.println("Before discount: " + orderAmountBeforeDiscount);
-
-        if (request.getVoucherCode() != null && !request.getVoucherCode().isBlank()) {
-                
-            appliedVoucher = voucherService.validateVoucher(
-                    request.getVoucherCode(),
-                    orderAmountBeforeDiscount,
-                    user.getId()
-            );
-
-            discountAmount = voucherService.calculateDiscount(
-                    appliedVoucher,
-                    orderAmountBeforeDiscount,
-                    shippingFee
-            );
-            System.out.println("Applied voucher: " + appliedVoucher.getCode());
-System.out.println("Discount amount: " + discountAmount);
+                return orders.stream()
+                                .map(this::mapToResponse)
+                                .toList();
         }
 
-        BigDecimal finalAmount = orderAmountBeforeDiscount.subtract(discountAmount);
+        // =============== Update order status ===========================
+        public OrderResponse completeOrder(UUID orderId, UUID userId) {
 
-        if (finalAmount.compareTo(BigDecimal.ZERO) < 0) {
-            finalAmount = BigDecimal.ZERO;
+                Order order = orderRepository.findById(orderId)
+                                .orElseThrow(() -> new RuntimeException("Order not found"));
+
+                if (!order.getUser().getId().equals(userId)) {
+                        throw new RuntimeException("You are not allowed to update this order");
+                }
+
+                if (!order.getStatus().equalsIgnoreCase("pending")) {
+                        throw new RuntimeException("Only pending orders can be completed");
+                }
+
+                order.setStatus("completed");
+
+                orderRepository.save(order);
+
+                return mapToResponse(order);
         }
 
-        // totalAmount lưu số tiền cuối cùng cần trả
-        order.setTotalAmount(finalAmount.doubleValue());
-        orderRepository.save(order);
+        // ================= MAPPING =================
+        private OrderResponse mapToResponse(Order order) {
 
-        if (appliedVoucher != null) {
-            OrderVoucher orderVoucher = OrderVoucher.builder()
-                    .order(order)
-                    .voucher(appliedVoucher)
-                    .discountAmount(discountAmount)
-                    .build();
-
-            orderVoucherRepository.save(orderVoucher);
+                return OrderResponse.builder()
+                                .orderId(order.getId())
+                                .status(order.getStatus())
+                                .totalAmount(order.getTotalAmount())
+                                .shippingName(order.getShippingName())
+                                .shippingPhone(order.getShippingPhone())
+                                .shippingAddress(order.getShippingAddress())
+                                .deliveryMethodId(order.getDeliveryMethod() != null ? order.getDeliveryMethod().getId()
+                                                : null)
+                                .deliveryMethodName(
+                                                order.getDeliveryMethod() != null ? order.getDeliveryMethod().getName()
+                                                                : null)
+                                .shippingFee(order.getShippingFee())
+                                .items(
+                                                order.getItems().stream().map(item -> OrderResponse.ItemResponse
+                                                                .builder()
+                                                                .orderItemId(item.getId())
+                                                                .productId(item.getProduct().getId())
+                                                                .productName(item.getProduct().getName())
+                                                                .unitId(item.getProductUnit().getId())
+                                                                .unitName(item.getProductUnit().getUnit().getName())
+                                                                .quantity(item.getQuantity())
+                                                                .unitPrice(item.getUnitPrice())
+                                                                .build()).toList())
+                                .build();
         }
-
-        Payment payment = Payment.builder()
-                .order(order)
-                .amount(finalAmount)
-                .paymentMethod(paymentMethod)
-                .status("pending")
-                .build();
-
-        paymentRepository.save(payment);
-
-        return mapToResponse(order);
-    }
-
-    // ================= GET ORDERS BY USER =================
-    @Transactional(readOnly = true)
-    public List<OrderResponse> getOrdersByUser(UUID userId) {
-
-        List<Order> orders =
-                orderRepository.findByUserIdOrderByCreatedAtDesc(userId);
-
-        return orders.stream()
-                .map(this::mapToResponse)
-                .toList();
-    }
-
-    // ================= MAPPING =================
-    private OrderResponse mapToResponse(Order order) {
-
-        return OrderResponse.builder()
-                .orderId(order.getId())
-                .status(order.getStatus())
-                .totalAmount(order.getTotalAmount())
-                .shippingName(order.getShippingName())
-                .shippingPhone(order.getShippingPhone())
-                .shippingAddress(order.getShippingAddress())
-                .deliveryMethodId(order.getDeliveryMethod() != null ? order.getDeliveryMethod().getId() : null)
-                .deliveryMethodName(order.getDeliveryMethod() != null ? order.getDeliveryMethod().getName() : null)
-                .shippingFee(order.getShippingFee())
-                .items(
-                        order.getItems().stream().map(item ->
-                                OrderResponse.ItemResponse.builder()
-                                        .productId(item.getProduct().getId())
-                                        .productName(item.getProduct().getName())
-                                        .unitId(item.getProductUnit().getId())
-                                        .unitName(item.getProductUnit().getUnit().getName())
-                                        .quantity(item.getQuantity())
-                                        .unitPrice(item.getUnitPrice())
-                                        .build()
-                        ).toList()
-                )
-                .build();
-    }
 }

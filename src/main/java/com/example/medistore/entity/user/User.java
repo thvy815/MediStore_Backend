@@ -5,6 +5,8 @@ import lombok.*;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.UUID;
 
 @Entity
@@ -20,10 +22,6 @@ public class User {
     @GeneratedValue
     @Column(name = "id", updatable = false, nullable = false)
     private UUID id;
-
-    @ManyToOne
-    @JoinColumn(name = "role_id")
-    private Role role;
 
     @Column(name = "email", unique = true, nullable = false, length = 255)
     private String email;
@@ -46,6 +44,51 @@ public class User {
     @Column(name = "address", columnDefinition = "TEXT")
     private String address;
 
+    @Column(name = "avatar", length = 255)
+    private String avatar;
+
+    @Column(name = "membership_level")
+    private String membershipLevel;
+
+    @Column(name = "is_verified")
+    @Builder.Default
+    private Boolean isVerified = false;
+
+    @Column(name = "is_active")
+    @Builder.Default
+    private Boolean isActive = true;
+
+    @Column(name = "is_account_locked")
+    @Builder.Default
+    private Boolean isAccountLocked = false;
+
+    @Column(name = "is_deleted")
+    @Builder.Default
+    private Boolean isDeleted = false;
+
+    @ManyToMany(fetch = FetchType.EAGER)
+    @JoinTable(
+            name = "user_roles",
+            joinColumns = @JoinColumn(name = "user_id"),
+            inverseJoinColumns = @JoinColumn(name = "role_id")
+    )
+    @Builder.Default
+    private Set<Role> roles = new HashSet<>();
+
+    // reset password
+    @Column(name = "reset_password_token", unique = true)
+    private String resetPasswordToken;
+
+    @Column(name = "reset_password_token_expiry")
+    private LocalDateTime resetPasswordTokenExpiry;
+    
+    // email verification
+    @Column(name = "verification_token", unique = true)
+    private String verificationToken;
+
+    @Column(name = "verification_token_expiry")
+    private LocalDateTime verificationTokenExpiry;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
@@ -62,7 +105,4 @@ public class User {
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();
     }
-
-    private String resetPasswordToken;
-    private LocalDateTime resetPasswordTokenExpiry;
 }

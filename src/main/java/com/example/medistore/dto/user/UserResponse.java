@@ -1,6 +1,8 @@
 package com.example.medistore.dto.user;
 
 import lombok.*;
+
+import java.util.Set;
 import java.util.UUID;
 
 @Builder @Data
@@ -9,6 +11,5 @@ public class UserResponse {
     private String email;
     private String fullName;
     private String phone;
-    private UUID roleId;
-    private String roleName;
+    private Set<RoleResponse> roles;
 }
