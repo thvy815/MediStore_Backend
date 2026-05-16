@@ -23,6 +23,7 @@ import com.example.medistore.entity.product.Product;
 import com.example.medistore.entity.product.ProductUnit;
 import com.example.medistore.entity.user.User;
 import com.example.medistore.repository.batch.BatchRepository;
+import com.example.medistore.repository.cart.CartItemRepository;
 import com.example.medistore.repository.order.DeliveryMethodRepository;
 import com.example.medistore.repository.order.OrderItemRepository;
 import com.example.medistore.repository.order.OrderRepository;
@@ -49,6 +50,7 @@ public class OrderService {
     private final DeliveryMethodRepository deliveryMethodRepository;
     private final PaymentMethodRepository paymentMethodRepository;
     private final PaymentRepository paymentRepository;
+    private final CartItemRepository cartItemRepository;
 
     private final VoucherService voucherService;
     private final OrderVoucherRepository orderVoucherRepository;
@@ -134,7 +136,7 @@ public class OrderService {
                         .product(product)
                         .productUnit(productUnit)
                         .batch(batch)
-                        .quantity(deduct)
+                        .quantity(itemReq.getQuantity())
                         .unitPrice(productUnit.getPrice().doubleValue())
                         .build();
 
@@ -212,6 +214,18 @@ System.out.println("Discount amount: " + discountAmount);
 
         paymentRepository.save(payment);
 
+        System.out.println("===== REMOVE CART ITEMS =====");
+
+for (CreateOrderRequest.ItemRequest item : request.getItems()) {
+    System.out.println("cartItemId = " + item.getCartItemId());
+
+    if (item.getCartItemId() != null) {
+        cartItemRepository.deleteById(item.getCartItemId());
+        System.out.println("Deleted cart item: " + item.getCartItemId());
+    }
+}
+
+
         return mapToResponse(order);
     }
 
@@ -226,6 +240,27 @@ System.out.println("Discount amount: " + discountAmount);
                 .map(this::mapToResponse)
                 .toList();
     }
+
+    // =============== Update order status ===========================
+    public OrderResponse completeOrder(UUID orderId, UUID userId) {
+
+    Order order = orderRepository.findById(orderId)
+            .orElseThrow(() -> new RuntimeException("Order not found"));
+
+    if (!order.getUser().getId().equals(userId)) {
+        throw new RuntimeException("You are not allowed to update this order");
+    }
+
+    if (!order.getStatus().equalsIgnoreCase("pending")) {
+        throw new RuntimeException("Only pending orders can be completed");
+    }
+
+    order.setStatus("completed");
+
+    orderRepository.save(order);
+
+    return mapToResponse(order);
+}
 
     // ================= MAPPING =================
     private OrderResponse mapToResponse(Order order) {
@@ -243,6 +278,7 @@ System.out.println("Discount amount: " + discountAmount);
                 .items(
                         order.getItems().stream().map(item ->
                                 OrderResponse.ItemResponse.builder()
+                                        .orderItemId(item.getId()) 
                                         .productId(item.getProduct().getId())
                                         .productName(item.getProduct().getName())
                                         .unitId(item.getProductUnit().getId())

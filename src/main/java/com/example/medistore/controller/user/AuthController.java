@@ -1,7 +1,11 @@
 package com.example.medistore.controller.user;
 
-import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 import com.example.medistore.dto.user.AuthResponse;
 import com.example.medistore.dto.user.ForgotPasswordRequest;
@@ -15,6 +19,8 @@ import com.example.medistore.service.user.JwtService;
 import com.example.medistore.service.user.MailService;
 import com.example.medistore.service.user.RefreshTokenService;
 import com.example.medistore.service.user.UserService;
+
+import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -69,6 +75,12 @@ public class AuthController {
             .isVerified(user.getIsVerified())
             .isActive(user.getIsActive())
             .build();
+        
+            System.out.println("=== LOGIN DEBUG ===");
+            System.out.println("Email: " + user.getEmail());
+            System.out.println("Roles: " + user.getRoles());
+            System.out.println("IsVerified: " + user.getIsVerified());
+            System.out.println("===================");
 
         return AuthResponse.builder()
             .accessToken(accessToken)

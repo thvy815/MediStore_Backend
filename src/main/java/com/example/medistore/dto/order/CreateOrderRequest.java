@@ -28,6 +28,7 @@ public class CreateOrderRequest {
 
     @Data
     public static class ItemRequest {
+        private UUID cartItemId;  
         private UUID productId;
         private UUID productUnitId; 
         private int quantity;
