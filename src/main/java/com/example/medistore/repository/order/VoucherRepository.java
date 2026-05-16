@@ -8,5 +8,10 @@ import java.util.UUID;
 
 public interface VoucherRepository extends JpaRepository<Voucher, UUID> {
     Optional<Voucher> findByCodeIgnoreCase(String code);
+
     boolean existsByCodeIgnoreCase(String code);
+
+    boolean existsByCodeIgnoreCaseAndIdNot(
+            String code,
+            UUID id);
 }
