@@ -2,6 +2,7 @@ package com.example.medistore.controller.order;
 
 import com.example.medistore.dto.order.CreatePaymentRequest;
 import com.example.medistore.dto.order.PaymentResponse;
+import com.example.medistore.dto.order.TransactionResponse;
 import com.example.medistore.service.payment.PaymentService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -35,6 +36,12 @@ public class PaymentController {
             @PathVariable UUID orderId) {
 
         return paymentService.history(orderId);
+    }
+
+    @GetMapping("/all-history")
+    public List<TransactionResponse> getAllHistory() {
+
+        return paymentService.getAllHistory();
     }
 
     @GetMapping("/vnpay-ipn")
