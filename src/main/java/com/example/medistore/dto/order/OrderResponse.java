@@ -1,6 +1,7 @@
 package com.example.medistore.dto.order;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -18,6 +19,7 @@ public class OrderResponse {
     private String shippingName;
     private String shippingPhone;
     private String shippingAddress;
+    private LocalDateTime createdAt;
 
     private UUID deliveryMethodId;
     private String deliveryMethodName;
