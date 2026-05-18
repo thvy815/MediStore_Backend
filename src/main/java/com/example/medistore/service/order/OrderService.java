@@ -238,26 +238,70 @@ public class OrderService {
                                 .toList();
         }
 
-        // =============== Update order status ===========================
-        public OrderResponse completeOrder(UUID orderId, UUID userId) {
+        // ================= GET ALL ORDERS - ADMIN =================
+@Transactional(readOnly = true)
+public List<OrderResponse> getAllOrders() {
+    return orderRepository.findAllByOrderByCreatedAtDesc()
+            .stream()
+            .map(this::mapToResponse)
+            .toList();
+}
 
-                Order order = orderRepository.findById(orderId)
-                                .orElseThrow(() -> new RuntimeException("Order not found"));
+// ================= ADMIN MARK DELIVERED =================
+public OrderResponse markAsDelivered(UUID orderId) {
 
-                if (!order.getUser().getId().equals(userId)) {
-                        throw new RuntimeException("You are not allowed to update this order");
-                }
+    Order order = orderRepository.findById(orderId)
+            .orElseThrow(() -> new RuntimeException("Order not found"));
 
-                if (!order.getStatus().equalsIgnoreCase("pending")) {
-                        throw new RuntimeException("Only pending orders can be completed");
-                }
+    if (!order.getStatus().equalsIgnoreCase("pending")) {
+        throw new RuntimeException("Only pending orders can be delivered");
+    }
 
-                order.setStatus("completed");
+    order.setStatus("delivered");
+    orderRepository.save(order);
 
-                orderRepository.save(order);
+    return mapToResponse(order);
+}
 
-                return mapToResponse(order);
-        }
+// ================= CUSTOMER COMPLETE ORDER =================
+public OrderResponse completeOrder(UUID orderId, UUID userId) {
+
+    Order order = orderRepository.findById(orderId)
+            .orElseThrow(() -> new RuntimeException("Order not found"));
+
+    if (!order.getUser().getId().equals(userId)) {
+        throw new RuntimeException("You are not allowed to update this order");
+    }
+
+    if (!order.getStatus().equalsIgnoreCase("delivered")) {
+        throw new RuntimeException("Only delivered orders can be completed");
+    }
+
+    order.setStatus("completed");
+    orderRepository.save(order);
+
+    return mapToResponse(order);
+}
+
+// ================= CUSTOMER CANCEL ORDER =================
+public OrderResponse cancelOrder(UUID orderId, UUID userId) {
+
+    Order order = orderRepository.findById(orderId)
+            .orElseThrow(() -> new RuntimeException("Order not found"));
+
+    if (!order.getUser().getId().equals(userId)) {
+        throw new RuntimeException("You are not allowed to cancel this order");
+    }
+
+    if (!order.getStatus().equalsIgnoreCase("pending")) {
+        throw new RuntimeException("Only pending orders can be cancelled");
+    }
+
+    order.setStatus("cancelled");
+    orderRepository.save(order);
+
+    return mapToResponse(order);
+}
 
         // ================= MAPPING =================
         private OrderResponse mapToResponse(Order order) {
@@ -269,6 +313,7 @@ public class OrderService {
                                 .shippingName(order.getShippingName())
                                 .shippingPhone(order.getShippingPhone())
                                 .shippingAddress(order.getShippingAddress())
+                                .createdAt(order.getCreatedAt())
                                 .deliveryMethodId(order.getDeliveryMethod() != null ? order.getDeliveryMethod().getId()
                                                 : null)
                                 .deliveryMethodName(
