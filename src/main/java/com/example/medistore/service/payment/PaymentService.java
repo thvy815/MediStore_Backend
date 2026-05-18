@@ -13,6 +13,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -33,26 +34,22 @@ public class PaymentService {
                         CreatePaymentRequest request,
                         HttpServletRequest httpRequest) throws Exception {
 
-                PaymentMethod method = paymentMethodRepository
-                                .findById(request.getPaymentMethodId())
-                                .orElseThrow();
-
                 Order order = orderRepository
                                 .findById(request.getOrderId())
-                                .orElseThrow();
+                                .orElseThrow(() -> new RuntimeException("Order not found"));
 
-                // ONE transaction ref ONLY
+                Payment payment = paymentRepository
+                                .findTopByOrderIdOrderByCreatedAtDesc(order.getId())
+                                .orElseThrow(() -> new RuntimeException("Payment not found"));
+
                 String txnRef = UUID.randomUUID().toString();
 
-                Payment payment = Payment.builder()
-                                .status("pending")
-                                .transactionRef(txnRef)
-                                .paymentMethod(method)
-                                .order(order)
-                                .amount(request.getAmount())
-                                .build();
+                payment.setTransactionRef(txnRef);
 
-                payment = paymentRepository.save(payment);
+                payment.setAmount(
+                                BigDecimal.valueOf(order.getTotalAmount()));
+
+                payment.setStatus("pending");
 
                 String paymentUrl = vnPayService.createPaymentUrl(
                                 payment,
