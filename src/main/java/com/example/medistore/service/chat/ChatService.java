@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import com.example.medistore.dto.chat.ChatMessageResponse;
 import com.example.medistore.dto.chat.ChatSessionResponse;
 import com.example.medistore.dto.chat.ChatSocketMessageRequest;
+import com.example.medistore.dto.chat.ChatStatisticsResponse;
 import com.example.medistore.dto.chat.CreateChatFeedbackRequest;
 import com.example.medistore.dto.chat.CreateChatSessionRequest;
 import com.example.medistore.dto.chat.SendChatMessageRequest;
@@ -123,6 +124,37 @@ public class ChatService {
         chatFeedbackRepository.save(feedback);
     }
 
+    private ChatSessionResponse mapToChatSessionResponse(ChatSession session) {
+    return ChatSessionResponse.builder()
+            .id(session.getId())
+            .userId(session.getUser() != null ? session.getUser().getId() : null)
+            .type(session.getType())
+            .status(session.getStatus())
+            .createdAt(session.getCreatedAt())
+            .endedAt(session.getEndedAt())
+            .build();
+}
+
+    public List<ChatSessionResponse> getAllSessions() {
+        return chatSessionRepository.findAll()
+                .stream()
+                .map(this::mapToChatSessionResponse)
+                .toList();
+        }
+
+        public ChatStatisticsResponse getStatistics() {
+        long total = chatSessionRepository.count();
+        long active = chatSessionRepository.countByStatus("active");
+        long ended = chatSessionRepository.countByStatus("ended");
+
+        return ChatStatisticsResponse.builder()
+                .totalSessions(total)
+                .activeSessions(active)
+                .endedSessions(ended)
+                .averageRating(0.0)
+                .build();
+        }
+
     private ChatSessionResponse mapSessionToResponse(ChatSession session) {
         return ChatSessionResponse.builder()
                 .id(session.getId())
@@ -160,5 +192,6 @@ public class ChatService {
                         .orElseThrow(() -> new RuntimeException("Chat session not found"));
 
                 return "ai".equalsIgnoreCase(session.getType());
-                }
+         }
+     
 }

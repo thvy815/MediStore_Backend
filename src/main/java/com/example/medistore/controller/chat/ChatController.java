@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.example.medistore.dto.chat.ChatMessageResponse;
 import com.example.medistore.dto.chat.ChatSessionResponse;
+import com.example.medistore.dto.chat.ChatStatisticsResponse;
 import com.example.medistore.dto.chat.CreateChatFeedbackRequest;
 import com.example.medistore.dto.chat.CreateChatSessionRequest;
 import com.example.medistore.dto.chat.SendChatMessageRequest;
@@ -100,4 +101,15 @@ public ChatMessageResponse sendMessage(@RequestBody SendChatMessageRequest reque
         chatService.createFeedback(request);
         return "Feedback submitted successfully";
     }
+
+    @GetMapping("/sessions")
+    public List<ChatSessionResponse> getAllSessions() {
+        return chatService.getAllSessions();
+    }
+
+    @GetMapping("/statistics")
+    public ChatStatisticsResponse getStatistics() {
+        return chatService.getStatistics();
+    }
+
 }

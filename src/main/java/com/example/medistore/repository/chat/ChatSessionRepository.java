@@ -12,4 +12,5 @@ public interface ChatSessionRepository extends JpaRepository<ChatSession, UUID> 
     List<ChatSession> findByType(String type);
     List<ChatSession> findByStatus(String status);
     List<ChatSession> findByTypeAndStatus(String type, String status);
+    long countByStatus(String status);
 }
