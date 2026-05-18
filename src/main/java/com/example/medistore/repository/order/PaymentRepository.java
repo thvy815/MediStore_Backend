@@ -13,4 +13,6 @@ public interface PaymentRepository
     Optional<Payment> findByTransactionRef(String transactionRef);
 
     List<Payment> findByOrderId(UUID orderId);
+
+    Optional<Payment> findTopByOrderIdOrderByCreatedAtDesc(UUID orderId);
 }

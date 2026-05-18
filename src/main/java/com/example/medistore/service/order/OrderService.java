@@ -239,69 +239,127 @@ public class OrderService {
         }
 
         // ================= GET ALL ORDERS - ADMIN =================
-@Transactional(readOnly = true)
-public List<OrderResponse> getAllOrders() {
-    return orderRepository.findAllByOrderByCreatedAtDesc()
-            .stream()
-            .map(this::mapToResponse)
-            .toList();
-}
+        @Transactional(readOnly = true)
+        public List<OrderResponse> getAllOrders() {
+                return orderRepository.findAllByOrderByCreatedAtDesc()
+                                .stream()
+                                .map(this::mapToResponse)
+                                .toList();
+        }
 
-// ================= ADMIN MARK DELIVERED =================
-public OrderResponse markAsDelivered(UUID orderId) {
+        // ================= ADMIN MARK DELIVERED =================
+        public OrderResponse markAsDelivered(UUID orderId) {
 
-    Order order = orderRepository.findById(orderId)
-            .orElseThrow(() -> new RuntimeException("Order not found"));
+                Order order = orderRepository.findById(orderId)
+                                .orElseThrow(() -> new RuntimeException("Order not found"));
 
-    if (!order.getStatus().equalsIgnoreCase("pending")) {
-        throw new RuntimeException("Only pending orders can be delivered");
-    }
+                if (!order.getStatus().equalsIgnoreCase("pending")) {
+                        throw new RuntimeException("Only pending orders can be delivered");
+                }
 
-    order.setStatus("delivered");
-    orderRepository.save(order);
+                order.setStatus("delivered");
+                orderRepository.save(order);
 
-    return mapToResponse(order);
-}
+                return mapToResponse(order);
+        }
 
-// ================= CUSTOMER COMPLETE ORDER =================
-public OrderResponse completeOrder(UUID orderId, UUID userId) {
+        // ================= CUSTOMER COMPLETE ORDER =================
+        public OrderResponse completeOrder(UUID orderId, UUID userId) {
 
-    Order order = orderRepository.findById(orderId)
-            .orElseThrow(() -> new RuntimeException("Order not found"));
+                Order order = orderRepository.findById(orderId)
+                                .orElseThrow(() -> new RuntimeException("Order not found"));
 
-    if (!order.getUser().getId().equals(userId)) {
-        throw new RuntimeException("You are not allowed to update this order");
-    }
+                if (!order.getUser().getId().equals(userId)) {
+                        throw new RuntimeException("You are not allowed to update this order");
+                }
 
-    if (!order.getStatus().equalsIgnoreCase("delivered")) {
-        throw new RuntimeException("Only delivered orders can be completed");
-    }
+                if (!order.getStatus().equalsIgnoreCase("delivered")) {
+                        throw new RuntimeException("Only delivered orders can be completed");
+                }
 
-    order.setStatus("completed");
-    orderRepository.save(order);
+                order.setStatus("completed");
 
-    return mapToResponse(order);
-}
+                Payment payment = paymentRepository
+                                .findTopByOrderIdOrderByCreatedAtDesc(orderId)
+                                .orElseThrow(() -> new RuntimeException("Payment not found"));
 
-// ================= CUSTOMER CANCEL ORDER =================
-public OrderResponse cancelOrder(UUID orderId, UUID userId) {
+                payment.setStatus("completed");
 
-    Order order = orderRepository.findById(orderId)
-            .orElseThrow(() -> new RuntimeException("Order not found"));
+                paymentRepository.save(payment);
 
-    if (!order.getUser().getId().equals(userId)) {
-        throw new RuntimeException("You are not allowed to cancel this order");
-    }
+                orderRepository.save(order);
 
-    if (!order.getStatus().equalsIgnoreCase("pending")) {
-        throw new RuntimeException("Only pending orders can be cancelled");
-    }
+                return mapToResponse(order);
+        }
 
-    order.setStatus("cancelled");
-    orderRepository.save(order);
+        // ================= CUSTOMER CANCEL ORDER =================
+        public OrderResponse cancelOrder(UUID orderId, UUID userId) {
 
-    return mapToResponse(order);
-}
+                Order order = orderRepository.findById(orderId)
+                                .orElseThrow(() -> new RuntimeException("Order not found"));
+
+                if (!order.getUser().getId().equals(userId)) {
+                        throw new RuntimeException("You are not allowed to cancel this order");
+                }
+
+                if (!order.getStatus().equalsIgnoreCase("pending")) {
+                        throw new RuntimeException("Only pending orders can be cancelled");
+                }
+
+                order.setStatus("cancelled");
+
+                Payment payment = paymentRepository
+                                .findTopByOrderIdOrderByCreatedAtDesc(orderId)
+                                .orElseThrow(() -> new RuntimeException("Payment not found"));
+
+                String paymentCode = payment.getPaymentMethod()
+                                .getCode();
+
+                if (paymentCode == null) {
+                        throw new RuntimeException("Payment method code is null");
+                }
+
+                paymentCode = paymentCode.toLowerCase();
+
+                /*
+                 * COD
+                 */
+                if (paymentCode.equals("cod")) {
+
+                        payment.setStatus("cancelled");
+                }
+
+                /*
+                 * VNPAY
+                 */
+                else if (paymentCode.equals("vnpay")) {
+
+                        /*
+                         * Đã thanh toán
+                         */
+                        if (payment.getStatus().equalsIgnoreCase("success")) {
+
+                                // TODO:
+                                // call VNPay refund API
+
+                                payment.setStatus("refunded");
+                        }
+
+                        /*
+                         * Chưa thanh toán
+                         */
+                        else {
+
+                                payment.setStatus("cancelled");
+                        }
+                }
+
+                paymentRepository.save(payment);
+
+                orderRepository.save(order);
+
+                return mapToResponse(order);
+        }
 
         // ================= MAPPING =================
         private OrderResponse mapToResponse(Order order) {
