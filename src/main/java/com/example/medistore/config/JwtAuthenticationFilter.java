@@ -44,37 +44,68 @@ public class JwtAuthenticationFilter
             return;
         }
 
-        String jwt = authHeader.substring(7);
+        try {
 
-        String email = jwtService.extractEmail(jwt);
+                String jwt = authHeader.substring(7);
 
-        if (email != null &&
-                SecurityContextHolder
-                        .getContext()
-                        .getAuthentication() == null) {
+                String email = jwtService.extractEmail(jwt);
 
-            UserDetails userDetails =
-                    userDetailsService
-                            .loadUserByUsername(email);
+                if (email != null &&
+                        SecurityContextHolder
+                                .getContext()
+                                .getAuthentication() == null) {
 
-            if (jwtService.isValid(jwt, email)) {
+                        UserDetails userDetails =
+                                userDetailsService
+                                        .loadUserByUsername(email);
 
-                UsernamePasswordAuthenticationToken authToken =
-                        new UsernamePasswordAuthenticationToken(
-                                userDetails,
-                                null,
-                                userDetails.getAuthorities()
-                        );
+                        if (jwtService.isValid(jwt, email)) {
 
-                authToken.setDetails(
-                        new WebAuthenticationDetailsSource()
-                                .buildDetails(request)
-                );
+                                UsernamePasswordAuthenticationToken authToken =
+                                        new UsernamePasswordAuthenticationToken(
+                                                userDetails,
+                                                null,
+                                                userDetails.getAuthorities()
+                                        );
 
-                SecurityContextHolder
-                        .getContext()
-                        .setAuthentication(authToken);
-            }
+                                authToken.setDetails(
+                                        new WebAuthenticationDetailsSource()
+                                                .buildDetails(request)
+                                );
+
+                                SecurityContextHolder
+                                        .getContext()
+                                        .setAuthentication(authToken);
+                        }
+                }
+
+        } catch (io.jsonwebtoken.ExpiredJwtException e) {
+
+                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+
+                response.setContentType("application/json");
+
+                response.getWriter().write("""
+                        {
+                          "message": "Token expired"
+                        }
+                """);
+
+                return;
+
+        } catch (Exception e) {
+
+                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+
+                response.setContentType("application/json");
+
+                response.getWriter().write("""
+                        {
+                           "message": "Invalid token"
+                        }
+                """);
+
+                return;
         }
 
         filterChain.doFilter(request, response);

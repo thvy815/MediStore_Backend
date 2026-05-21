@@ -5,9 +5,7 @@ import com.example.medistore.dto.order.PaymentResponse;
 import com.example.medistore.dto.order.TransactionResponse;
 import com.example.medistore.entity.order.Order;
 import com.example.medistore.entity.order.Payment;
-import com.example.medistore.entity.order.PaymentMethod;
 import com.example.medistore.repository.order.OrderRepository;
-import com.example.medistore.repository.order.PaymentMethodRepository;
 import com.example.medistore.repository.order.PaymentRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -23,8 +21,6 @@ import java.util.UUID;
 public class PaymentService {
 
         private final PaymentRepository paymentRepository;
-
-        private final PaymentMethodRepository paymentMethodRepository;
 
         private final OrderRepository orderRepository;
 

@@ -11,26 +11,11 @@ import com.example.medistore.service.product.BrandService;
 import lombok.RequiredArgsConstructor;
 
 @RestController
-@RequestMapping("/api/brands")
+@RequestMapping("/api/customer/brands")
 @RequiredArgsConstructor
 public class BrandController {
 
     private final BrandService brandService;
-
-    @PostMapping
-    public Brand create(@RequestBody Brand brand) {
-        return brandService.create(brand);
-    }
-
-    @PutMapping("/{id}")
-    public Brand update(@PathVariable UUID id, @RequestBody Brand brand) {
-        return brandService.update(id, brand);
-    }
-
-    @DeleteMapping("/{id}")
-    public void delete(@PathVariable UUID id) {
-        brandService.delete(id);
-    }
 
     @GetMapping
     public List<Brand> getAll() {

@@ -89,12 +89,26 @@ public class JwtService {
     }
 
     // 🔑 Dùng cho login: verify password + trả về user
-    public User authenticate(String email, String password) {
-        User user = userRepo.findByEmail(email)
-                .orElseThrow(() -> new BadCredentialsException("Email not found"));
+    public User authenticate(String identifier, String password) {
+        User user;
+
+        // login bằng email
+        if (identifier.contains("@")) {
+
+            user = userRepo.findByEmail(identifier)
+                    .orElseThrow(() ->
+                        new BadCredentialsException("Email not found"));
+
+        } else {
+
+            // login bằng phone
+            user = userRepo.findByPhone(identifier)
+                    .orElseThrow(() ->
+                        new BadCredentialsException("Phone not found"));
+        }
 
         if (!passwordEncoder.matches(password, user.getPassword())) {
-            throw new BadCredentialsException("Incorrect password");
+            throw new RuntimeException("Invalid password");
         }
 
         return user;

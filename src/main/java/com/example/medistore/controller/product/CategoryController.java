@@ -11,26 +11,10 @@ import com.example.medistore.service.product.CategoryService;
 import lombok.RequiredArgsConstructor;
 
 @RestController
-@RequestMapping("/api/categories")
+@RequestMapping("/api/customer/categories")
 @RequiredArgsConstructor
 public class CategoryController {
-
     private final CategoryService categoryService;
-
-    @PostMapping
-    public Category create(@RequestBody Category category) {
-        return categoryService.create(category);
-    }
-
-    @PutMapping("/{id}")
-    public Category update(@PathVariable UUID id, @RequestBody Category category) {
-        return categoryService.update(id, category);
-    }
-
-    @DeleteMapping("/{id}")
-    public void delete(@PathVariable UUID id) {
-        categoryService.delete(id);
-    }
 
     @GetMapping
     public List<Category> getAll() {
