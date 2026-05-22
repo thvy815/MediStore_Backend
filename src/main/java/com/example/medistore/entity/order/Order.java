@@ -26,7 +26,7 @@ public class Order {
 
     @Builder.Default
     @Column(name = "status", length = 50)
-    private String status = "pending";  // pending, confirmed, preparing, shipping, delivered, completed, cancelled, refunded
+    private String status = "pending";  // pending, delivered, completed, cancelled, refunded
 
     @Column(name = "total_amount")
     private double totalAmount;

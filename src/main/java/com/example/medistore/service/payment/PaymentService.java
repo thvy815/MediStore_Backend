@@ -5,8 +5,12 @@ import com.example.medistore.dto.order.PaymentResponse;
 import com.example.medistore.dto.order.TransactionResponse;
 import com.example.medistore.entity.order.Order;
 import com.example.medistore.entity.order.Payment;
+import com.example.medistore.enums.NotificationType;
 import com.example.medistore.repository.order.OrderRepository;
 import com.example.medistore.repository.order.PaymentRepository;
+import com.example.medistore.service.user.NotificationService;
+import com.example.medistore.util.OrderCode;
+
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -21,6 +25,8 @@ import java.util.UUID;
 public class PaymentService {
 
         private final PaymentRepository paymentRepository;
+        
+        private final NotificationService notificationService;
 
         private final OrderRepository orderRepository;
 
@@ -68,6 +74,19 @@ public class PaymentService {
                 payment.setStatus("success");
 
                 payment.setPaidAt(LocalDateTime.now());
+
+                Order order = payment.getOrder();
+
+                order.setStatus("confirmed"); // confirmed -> (preparing) --> delivered
+
+                orderRepository.save(order);
+
+                notificationService.sendNotification(
+                        order.getUser().getId(),
+                        "Payment Successful",
+                        "Your payment for order " + OrderCode.generate(order.getId()) + " was completed successfully.",
+                        NotificationType.PAYMENT
+                );
 
                 paymentRepository.save(payment);
         }

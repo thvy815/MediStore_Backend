@@ -22,6 +22,7 @@ import com.example.medistore.entity.order.Voucher;
 import com.example.medistore.entity.product.Product;
 import com.example.medistore.entity.product.ProductUnit;
 import com.example.medistore.entity.user.User;
+import com.example.medistore.enums.NotificationType;
 import com.example.medistore.repository.batch.BatchRepository;
 import com.example.medistore.repository.cart.CartItemRepository;
 import com.example.medistore.repository.order.DeliveryMethodRepository;
@@ -33,6 +34,8 @@ import com.example.medistore.repository.order.PaymentRepository;
 import com.example.medistore.repository.product.ProductRepository;
 import com.example.medistore.repository.product.ProductUnitRepository;
 import com.example.medistore.repository.user.UserRepository;
+import com.example.medistore.service.user.NotificationService;
+import com.example.medistore.util.OrderCode;
 
 import lombok.RequiredArgsConstructor;
 
@@ -51,7 +54,7 @@ public class OrderService {
         private final PaymentMethodRepository paymentMethodRepository;
         private final PaymentRepository paymentRepository;
         private final CartItemRepository cartItemRepository;
-
+        private final NotificationService notificationService;
         private final VoucherService voucherService;
         private final OrderVoucherRepository orderVoucherRepository;
 
@@ -93,6 +96,10 @@ public class OrderService {
                                 .deliveryMethod(deliveryMethod)
                                 .shippingFee(deliveryMethod.getBaseFee())
                                 .build();
+                
+                if (paymentMethod.getCode().equalsIgnoreCase("cod")) {
+                        order.setStatus("confirmed");
+                }
 
                 order = orderRepository.save(order);
 
@@ -224,6 +231,13 @@ public class OrderService {
                         }
                 }
 
+                notificationService.sendNotification(
+                        user.getId(),
+                        "Order Placed Successfully",
+                        "Your order " + OrderCode.generate(order.getId()) + " has been placed successfully.",
+                        NotificationType.ORDER
+                );
+
                 return mapToResponse(order);
         }
 
@@ -247,18 +261,25 @@ public class OrderService {
                                 .toList();
         }
 
-        // ================= ADMIN MARK DELIVERED =================
+        // ================= ADMIN MARK DELIVERED ================= --> warehouse staff
         public OrderResponse markAsDelivered(UUID orderId) {
 
                 Order order = orderRepository.findById(orderId)
                                 .orElseThrow(() -> new RuntimeException("Order not found"));
 
-                if (!order.getStatus().equalsIgnoreCase("pending")) {
-                        throw new RuntimeException("Only pending orders can be delivered");
+                if (!order.getStatus().equalsIgnoreCase("confirmed")) {
+                        throw new RuntimeException("Only confirmed orders can be delivered");
                 }
 
                 order.setStatus("delivered");
                 orderRepository.save(order);
+
+                notificationService.sendNotification(
+                        order.getUser().getId(),
+                        "Order Is On The Way",
+                        "Your order " + OrderCode.generate(order.getId()) + " is being delivered.",
+                        NotificationType.ORDER
+                );
 
                 return mapToResponse(order);
         }
@@ -288,6 +309,13 @@ public class OrderService {
                 paymentRepository.save(payment);
 
                 orderRepository.save(order);
+
+                notificationService.sendNotification(
+                        userId,
+                        "Order Completed",
+                        "Your order " + OrderCode.generate(order.getId()) + " has been completed successfully.",
+                        NotificationType.ORDER
+                );
 
                 return mapToResponse(order);
         }
@@ -357,6 +385,13 @@ public class OrderService {
                 paymentRepository.save(payment);
 
                 orderRepository.save(order);
+
+                notificationService.sendNotification(
+                        userId,
+                        "Order Cancelled",
+                        "Your order " + OrderCode.generate(order.getId()) + " has been cancelled.",
+                        NotificationType.ORDER
+                );
 
                 return mapToResponse(order);
         }

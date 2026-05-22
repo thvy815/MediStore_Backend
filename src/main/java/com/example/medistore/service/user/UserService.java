@@ -34,7 +34,7 @@ public class UserService {
     private final CartRepository cartRepository;
     private final MailService mailService;
 
-    public static final String ROLE_CUSTOMER = "Customer";
+    public static final String ROLE_CUSTOMER = "CUSTOMER";
 
     @Transactional
     public User register(RegisterRequest req) {
