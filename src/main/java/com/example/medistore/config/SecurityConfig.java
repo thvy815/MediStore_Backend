@@ -38,6 +38,9 @@ public class SecurityConfig {
                                 "/api/customer/**",
                                 "/api/categories/**",
 
+                                // WebSocket
+                                "/ws-chat/**",
+                                
                                 // Swagger
                                 "/swagger-ui/**",
                                 "/v3/api-docs/**",
