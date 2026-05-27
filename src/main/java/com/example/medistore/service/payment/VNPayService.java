@@ -83,6 +83,10 @@ public class VNPayService {
 
                 params.put("vnp_ExpireDate", expireDate);
 
+                params.put(
+                                "vnp_IpnUrl",
+                                "https://medistore-backend-i0de.onrender.com/api/payments/vnpay-ipn");
+
                 // Build hashData + query
                 StringBuilder hashData = new StringBuilder();
 

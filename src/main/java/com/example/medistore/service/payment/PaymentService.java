@@ -25,12 +25,14 @@ import java.util.UUID;
 public class PaymentService {
 
         private final PaymentRepository paymentRepository;
-        
+
         private final NotificationService notificationService;
 
         private final OrderRepository orderRepository;
 
         private final VNPayService vnPayService;
+
+        private final ZaloPayService zaloPayService;
 
         public PaymentResponse createPayment(
                         CreatePaymentRequest request,
@@ -82,11 +84,11 @@ public class PaymentService {
                 orderRepository.save(order);
 
                 notificationService.sendNotification(
-                        order.getUser().getId(),
-                        "Payment Successful",
-                        "Your payment for order " + OrderCode.generate(order.getId()) + " was completed successfully.",
-                        NotificationType.PAYMENT
-                );
+                                order.getUser().getId(),
+                                "Payment Successful",
+                                "Your payment for order " + OrderCode.generate(order.getId())
+                                                + " was completed successfully.",
+                                NotificationType.PAYMENT);
 
                 paymentRepository.save(payment);
         }
@@ -140,5 +142,48 @@ public class PaymentService {
                                 .paymentMethod(payment.getPaymentMethod().getName())
                                 .createdAt(payment.getCreatedAt())
                                 .build();
+        }
+
+        public PaymentResponse createZaloPayment(
+                        UUID orderId)
+                        throws Exception {
+
+                Order order = orderRepository
+                                .findById(orderId)
+                                .orElseThrow(() -> new RuntimeException(
+                                                "Order not found"));
+
+                Payment payment = paymentRepository
+                                .findTopByOrderIdOrderByCreatedAtDesc(
+                                                order.getId())
+                                .orElseThrow(() -> new RuntimeException(
+                                                "Payment not found"));
+
+                String txnRef = new java.text.SimpleDateFormat("yyMMdd")
+                                .format(new java.util.Date())
+                                + "_"
+                                + System.currentTimeMillis();
+
+                payment.setTransactionRef(
+                                txnRef);
+
+                payment.setAmount(
+                                BigDecimal.valueOf(
+                                                order.getTotalAmount()));
+
+                payment.setStatus(
+                                "pending");
+
+                String paymentUrl = zaloPayService
+                                .createPaymentUrl(
+                                                payment);
+
+                payment.setPaymentUrl(
+                                paymentUrl);
+
+                payment = paymentRepository
+                                .save(payment);
+
+                return map(payment);
         }
 }
