@@ -27,10 +27,7 @@ public class ZaloPayService {
     public String createPaymentUrl(
             Payment payment) throws Exception {
 
-        String appTransId = new java.text.SimpleDateFormat("yyMMdd")
-                .format(new java.util.Date())
-                + "_"
-                + System.currentTimeMillis();
+        String appTransId = payment.getTransactionRef();
 
         payment.setTransactionRef(appTransId);
 
@@ -97,11 +94,11 @@ public class ZaloPayService {
 
         body.put(
                 "callback_url",
-                "https://proud-crews-stare.loca.lt/api/payments/zalopay/callback");
+                "https://medistore-backend-i0de.onrender.com/api/payments/zalopay/callback");
 
         body.put(
                 "redirect_url",
-                "https://wide-spiders-say.loca.lt");
+                "https://medi-store-frontend-two.vercel.app");
 
         body.put("mac",
                 mac);

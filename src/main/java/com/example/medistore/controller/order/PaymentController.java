@@ -127,4 +127,35 @@ public class PaymentController {
                             "return_message", "fail"));
         }
     }
+
+    @GetMapping("/ping")
+    public String ping() {
+
+        return "ok";
+    }
+
+    @PostMapping("/manual-success/{txnRef}")
+    public ResponseEntity<?> manualSuccess(
+            @PathVariable String txnRef) {
+
+        try {
+
+            paymentService.paymentSuccess(txnRef);
+
+            return ResponseEntity.ok(
+                    Map.of(
+                            "success", true,
+                            "message", "Payment updated successfully",
+                            "updatedAt", java.time.LocalDateTime.now()));
+
+        } catch (Exception e) {
+
+            e.printStackTrace();
+
+            return ResponseEntity.badRequest().body(
+                    Map.of(
+                            "success", false,
+                            "message", e.getMessage()));
+        }
+    }
 }

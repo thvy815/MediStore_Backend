@@ -21,61 +21,58 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class SecurityConfig {
 
-    private final JwtAuthenticationFilter jwtFilter;
+        private final JwtAuthenticationFilter jwtFilter;
 
-    @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        http
-                .cors(Customizer.withDefaults())
-                .csrf(csrf -> csrf.disable())
-                .sessionManagement(session ->
-                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-                )
-                .authorizeHttpRequests(auth -> auth
-                        // PUBLIC APIs
-                        .requestMatchers(
-                                "/api/auth/**",
-                                "/api/customer/**",
-                                "/api/categories/**",
+        @Bean
+        public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+                http
+                                .cors(Customizer.withDefaults())
+                                .csrf(csrf -> csrf.disable())
+                                .sessionManagement(session -> session
+                                                .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                                .authorizeHttpRequests(auth -> auth
+                                                // PUBLIC APIs
+                                                .requestMatchers(
+                                                                "/api/auth/**",
+                                                                "/api/customer/**",
+                                                                "/api/categories/**",
+                                                                "/api/payments/zalopay/callback",
 
-                                // WebSocket
-                                "/ws-chat/**",
-                                
-                                // Swagger
-                                "/swagger-ui/**",
-                                "/v3/api-docs/**",
-                                "/swagger-ui.html"
-                        ).permitAll()
+                                                                // WebSocket
+                                                                "/ws-chat/**",
 
-                        .requestMatchers("/api/admin/**")
-                        .hasRole("ADMIN")
+                                                                // Swagger
+                                                                "/swagger-ui/**",
+                                                                "/v3/api-docs/**",
+                                                                "/swagger-ui.html")
+                                                .permitAll()
 
-                        // EVERYTHING ELSE NEED LOGIN
-                        .anyRequest().authenticated()
-                )
-                .addFilterBefore(
-                        jwtFilter,
-                        UsernamePasswordAuthenticationFilter.class
-                )
-                .httpBasic(httpBasic -> httpBasic.disable())
-                .formLogin(form -> form.disable());
+                                                .requestMatchers("/api/admin/**")
+                                                .hasRole("ADMIN")
 
-        return http.build();
-    }
+                                                // EVERYTHING ELSE NEED LOGIN
+                                                .anyRequest().authenticated())
+                                .addFilterBefore(
+                                                jwtFilter,
+                                                UsernamePasswordAuthenticationFilter.class)
+                                .httpBasic(httpBasic -> httpBasic.disable())
+                                .formLogin(form -> form.disable());
 
-    @Bean
-    CorsConfigurationSource corsConfigurationSource() {
-        CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of(
-            "http://localhost:5173",
-            "https://medi-store-frontend-two.vercel.app"
-        ));
-        config.addAllowedMethod("*");
-        config.addAllowedHeader("*");
-        config.setAllowCredentials(true);
+                return http.build();
+        }
 
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", config);
-        return source;
-    }
+        @Bean
+        CorsConfigurationSource corsConfigurationSource() {
+                CorsConfiguration config = new CorsConfiguration();
+                config.setAllowedOrigins(List.of(
+                                "http://localhost:5173",
+                                "https://medi-store-frontend-two.vercel.app"));
+                config.addAllowedMethod("*");
+                config.addAllowedHeader("*");
+                config.setAllowCredentials(true);
+
+                UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+                source.registerCorsConfiguration("/**", config);
+                return source;
+        }
 }
