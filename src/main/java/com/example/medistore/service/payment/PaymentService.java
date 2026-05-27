@@ -69,9 +69,10 @@ public class PaymentService {
         public void paymentSuccess(
                         String transactionRef) {
 
+                System.out.println("txnRef = " + transactionRef);
                 Payment payment = paymentRepository
                                 .findByTransactionRef(transactionRef)
-                                .orElseThrow();
+                                .orElseThrow(() -> new RuntimeException("NOT FOUND"));
 
                 payment.setStatus("success");
 
