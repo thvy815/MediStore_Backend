@@ -1,11 +1,12 @@
 package com.example.medistore.dto.order;
 
-import lombok.Builder;
-import lombok.Data;
-
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
+
+import lombok.Builder;
+import lombok.Data;
 
 @Data
 @Builder
@@ -18,6 +19,7 @@ public class OrderResponse {
     private String shippingName;
     private String shippingPhone;
     private String shippingAddress;
+    private LocalDateTime createdAt;
 
     private UUID deliveryMethodId;
     private String deliveryMethodName;
@@ -29,6 +31,7 @@ public class OrderResponse {
     @Builder
     public static class ItemResponse {
         private UUID productId;
+        private UUID orderItemId; 
         private UUID unitId;
         private String productName;
         private String unitName;

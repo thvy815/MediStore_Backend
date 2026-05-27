@@ -1,5 +1,6 @@
 package com.example.medistore.controller.user;
 
+import com.example.medistore.dto.user.AssignPermissionRequest;
 import com.example.medistore.entity.user.Role;
 import com.example.medistore.service.user.RoleService;
 import lombok.RequiredArgsConstructor;
@@ -38,6 +39,24 @@ public class RoleController {
     @DeleteMapping("/{id}")
     public void deleteRole(@PathVariable UUID id) {
         roleService.deleteRole(id);
+    }
+
+    @PostMapping("/assign-permission")
+    public Role assignPermission(@RequestBody AssignPermissionRequest req) {
+
+        return roleService.assignPermission(
+                req.getRoleId(),
+                req.getPermissionId()
+        );
+    }
+
+    @PostMapping("/remove-permission")
+    public Role removePermission(@RequestBody AssignPermissionRequest req) {
+
+        return roleService.removePermission(
+                req.getRoleId(),
+                req.getPermissionId()
+        );
     }
 }
 

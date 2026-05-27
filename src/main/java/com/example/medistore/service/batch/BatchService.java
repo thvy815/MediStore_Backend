@@ -19,6 +19,10 @@ import com.example.medistore.repository.batch.BatchRepository;
 import com.example.medistore.repository.batch.LawRepository;
 import com.example.medistore.repository.batch.SupplierRepository;
 import com.example.medistore.repository.product.ProductUnitRepository;
+import com.example.medistore.service.batch.BatchMapper;
+import com.example.medistore.service.batch.strategy.ExpiringSoonStrategy;
+import com.example.medistore.service.batch.strategy.InStockStrategy;
+import com.example.medistore.service.batch.strategy.LowStockStrategy;
 
 import lombok.RequiredArgsConstructor;
 
@@ -31,15 +35,17 @@ public class BatchService {
     private final SupplierRepository supplierRepository;
     private final ProductUnitRepository productUnitRepository;
     private final LawRepository lawRepository;
-    private static final int EXPIRY_WARNING_DAYS = 30;     // sắp hết hạn trong 30 ngày
-    private static final int LOW_STOCK_THRESHOLD = 100;    // <100 đơn vị nhỏ nhất
+    private final BatchMapper batchMapper;
+    private final ExpiringSoonStrategy expiringSoonStrategy;
+    private final InStockStrategy inStockStrategy;
+    private final LowStockStrategy lowStockStrategy;
 
     /**
      * Nhập kho (tạo batch mới)
      */
     public void createBatch(CreateBatchRequest req) {
         ProductUnit unit = productUnitRepository.findById(req.getProductUnitId())
-            .orElseThrow(() -> new RuntimeException("Product unit not found"));
+                .orElseThrow(() -> new RuntimeException("Product unit not found"));
 
         if (!unit.getProduct().getId().equals(req.getProductId())) {
             throw new RuntimeException("Product unit does not belong to product");
@@ -67,12 +73,10 @@ public class BatchService {
 
         int totalSmallestUnitQty = req.getQuantity() * unit.getConversionFactor();
 
-        BigDecimal importPriceSmallest =
-            req.getImportPrice().divide(
+        BigDecimal importPriceSmallest = req.getImportPrice().divide(
                 BigDecimal.valueOf(unit.getConversionFactor()),
                 2,
-                RoundingMode.HALF_UP
-            );
+                RoundingMode.HALF_UP);
 
         ProductBatch batch = new ProductBatch();
         batch.setProduct(unit.getProduct());
@@ -86,12 +90,11 @@ public class BatchService {
         batch.setImportPrice(importPriceSmallest);
         batch.setStatus("valid");
         batch.setLaw(
-            req.getLawCode() == null
-                ? null
-                : lawRepository.findById(req.getLawCode())
-                    .orElseThrow(() -> new RuntimeException("Law not found"))
-        );
-        
+                req.getLawCode() == null
+                        ? null
+                        : lawRepository.findById(req.getLawCode())
+                                .orElseThrow(() -> new RuntimeException("Law not found")));
+
         batchRepository.save(batch);
     }
 
@@ -99,9 +102,9 @@ public class BatchService {
     @Transactional(readOnly = true)
     public BatchResponse getBatchById(UUID id) {
         ProductBatch batch = batchRepository.findById(id)
-            .orElseThrow(() -> new RuntimeException("Batch not found"));
+                .orElseThrow(() -> new RuntimeException("Batch not found"));
 
-        return mapToResponse(batch);
+        return batchMapper.toResponse(batch);
     }
 
     // Lấy danh sách lô hàng với tùy chọn lọc
@@ -120,14 +123,17 @@ public class BatchService {
             batches = batchRepository.findAll();
         }
 
-        return batches.stream().map(this::mapToResponse).toList();
+        return batches
+                .stream()
+                .map(batchMapper::toResponse)
+                .toList();
     }
 
     // Cập nhật thông tin lô hàng
     public void updateBatch(UUID id, UpdateBatchRequest req) {
 
         ProductBatch batch = batchRepository.findById(id)
-            .orElseThrow(() -> new RuntimeException("Batch not found"));
+                .orElseThrow(() -> new RuntimeException("Batch not found"));
 
         // ❌ Không cho sửa batch đã recall
         if ("recalled".equals(batch.getStatus())) {
@@ -152,7 +158,7 @@ public class BatchService {
 
         if (req.getLawCode() != null) {
             Law law = lawRepository.findById(req.getLawCode())
-                .orElseThrow(() -> new RuntimeException("Law not found"));
+                    .orElseThrow(() -> new RuntimeException("Law not found"));
             batch.setLaw(law);
         }
     }
@@ -160,7 +166,7 @@ public class BatchService {
     // Thu hồi lô hàng
     public void recallBatch(UUID id) {
         ProductBatch batch = batchRepository.findById(id)
-            .orElseThrow(() -> new RuntimeException("Batch not found"));
+                .orElseThrow(() -> new RuntimeException("Batch not found"));
 
         batch.setStatus("recalled");
     }
@@ -168,31 +174,21 @@ public class BatchService {
     // Lấy danh sách batch sắp hết hạn
     @Transactional(readOnly = true)
     public List<BatchResponse> getExpiringSoonBatches() {
-        LocalDate now = LocalDate.now();
-        LocalDate warningDate = now.plusDays(EXPIRY_WARNING_DAYS);
 
-        return batchRepository.findExpiringSoon(now, warningDate)
-            .stream()
-            .map(this::mapToResponse)
-            .toList();
+        return expiringSoonStrategy.execute();
     }
 
     // Lấy danh sách batch có tồn kho thấp
     @Transactional(readOnly = true)
     public List<BatchResponse> getLowStockBatches() {
-        return batchRepository
-            .findByStatusAndQuantityRemainingLessThan("valid", LOW_STOCK_THRESHOLD)
-            .stream()
-            .map(this::mapToResponse)
-            .toList();
+
+        return lowStockStrategy.execute();
     }
 
     @Transactional(readOnly = true)
     public List<BatchResponse> getInStockBatches() {
-        return batchRepository.findBatchesInStock(LocalDate.now())
-            .stream()
-            .map(this::mapToResponse)
-            .toList();
+
+        return inStockStrategy.execute();
     }
 
     /**
@@ -202,9 +198,9 @@ public class BatchService {
     public List<BatchResponse> getBatchesByProduct(UUID productId) {
 
         return batchRepository.findByProductId(productId)
-            .stream()
-            .map(this::mapToResponse)
-            .toList();
+                .stream()
+                .map(batchMapper::toResponse)
+                .toList();
     }
 
     @Transactional(readOnly = true)
@@ -213,22 +209,22 @@ public class BatchService {
     }
 
     /**
-     * FEFO – phân bổ batch khi checkout @param requiredQuantity số lượng cần theo đơn vị nhỏ nhất
+     * FEFO – phân bổ batch khi checkout @param requiredQuantity số lượng cần theo
+     * đơn vị nhỏ nhất
      */
     public List<ProductBatch> allocateBatch(UUID productId, int requiredQuantity) {
 
-        List<ProductBatch> batches =
-            batchRepository.findByProductIdAndStatusAndExpiryDateAfterOrderByExpiryDateAsc(
+        List<ProductBatch> batches = batchRepository.findByProductIdAndStatusAndExpiryDateAfterOrderByExpiryDateAsc(
                 productId,
                 "valid",
-                LocalDate.now()
-            );
+                LocalDate.now());
 
         int remaining = requiredQuantity;
 
         for (ProductBatch batch : batches) {
 
-            if (remaining <= 0) break;
+            if (remaining <= 0)
+                break;
 
             int used = Math.min(batch.getQuantityRemaining(), remaining);
             batch.setQuantityRemaining(batch.getQuantityRemaining() - used);
@@ -251,53 +247,10 @@ public class BatchService {
 
         for (ProductBatch batch : all) {
             if (batch.getExpiryDate().isBefore(LocalDate.now())
-                && batch.getStatus().equals("valid")) {
+                    && batch.getStatus().equals("valid")) {
 
                 batch.setStatus("expired");
             }
         }
-    }
-
-    private BatchResponse mapToResponse(ProductBatch batch) {
-
-        BatchResponse res = new BatchResponse();
-
-        // Batch
-        res.setId(batch.getId());
-        res.setBatchNumber(batch.getBatchNumber());
-        res.setManufactureDate(batch.getManufactureDate());
-        res.setExpiryDate(batch.getExpiryDate());
-        res.setQuantityImported(batch.getQuantityImported());
-        res.setQuantityRemaining(batch.getQuantityRemaining());
-        res.setImportPrice(batch.getImportPrice());
-        res.setStatus(batch.getStatus());
-        res.setCreatedAt(batch.getCreatedAt());
-        res.setUpdatedAt(batch.getUpdatedAt());
-
-        // Product
-        res.setProductId(batch.getProduct().getId());
-        res.setProductName(batch.getProduct().getName());
-        
-        // Supplier
-        res.setSupplierId(batch.getSupplier().getId());
-        res.setSupplierName(batch.getSupplier().getName());
-
-        // Law
-        if (batch.getLaw() != null) {
-            res.setLawCode(batch.getLaw().getCode());
-            res.setLawTitle(batch.getLaw().getTitle());
-        }
-
-        // Lấy đơn vị nhỏ nhất
-        ProductUnit smallestUnit = productUnitRepository
-            .findByProductIdAndConversionFactor(
-                batch.getProduct().getId(),
-                1
-            )
-            .orElseThrow(() -> new RuntimeException("Smallest unit not found"));
-
-        res.setSmallestUnitName(smallestUnit.getUnit().getName());
-
-        return res;
     }
 }
