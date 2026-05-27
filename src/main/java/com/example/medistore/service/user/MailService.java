@@ -16,11 +16,8 @@ public class MailService {
     @Value("${spring.mail.username}")
     private String from;
 
-    @Value("${app.reset-password.url}")
-    private String resetPasswordBaseUrl;
-
     public void sendResetPasswordMail(String to, String token) {
-        String resetLink = resetPasswordBaseUrl + token;
+        String resetLink = "http://localhost:5173/reset-password?token=" + token;
 
         SimpleMailMessage message = new SimpleMailMessage();
         message.setFrom(from);
@@ -32,7 +29,7 @@ public class MailService {
                 Click the link below to reset your password:
                 """ + resetLink + """
 
-                This link will expire in 30 minutes.
+                This link will expire in 5 minutes.
                 """);
 
         mailSender.send(message);

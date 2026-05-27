@@ -39,7 +39,7 @@ public class AuthController {
 
     @PostMapping("/login")
     public AuthResponse login(@RequestBody LoginRequest req) {
-        User user = jwtService.authenticate(req.getEmail(), req.getPassword());
+        User user = jwtService.authenticate(req.getIdentifier(), req.getPassword());
 
         // check verify email
         if (!user.getIsVerified()) {
@@ -75,12 +75,6 @@ public class AuthController {
             .isVerified(user.getIsVerified())
             .isActive(user.getIsActive())
             .build();
-        
-            System.out.println("=== LOGIN DEBUG ===");
-            System.out.println("Email: " + user.getEmail());
-            System.out.println("Roles: " + user.getRoles());
-            System.out.println("IsVerified: " + user.getIsVerified());
-            System.out.println("===================");
 
         return AuthResponse.builder()
             .accessToken(accessToken)

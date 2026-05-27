@@ -35,13 +35,20 @@ public class SecurityConfig {
                         // PUBLIC APIs
                         .requestMatchers(
                                 "/api/auth/**",
+                                "/api/customer/**",
+                                "/api/categories/**",
 
+                                // WebSocket
                                 "/ws-chat/**",
+                                
                                 // Swagger
                                 "/swagger-ui/**",
                                 "/v3/api-docs/**",
                                 "/swagger-ui.html"
                         ).permitAll()
+
+                        .requestMatchers("/api/admin/**")
+                        .hasRole("ADMIN")
 
                         // EVERYTHING ELSE NEED LOGIN
                         .anyRequest().authenticated()
