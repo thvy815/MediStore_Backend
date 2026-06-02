@@ -16,11 +16,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
-import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
-import java.util.TreeMap;
 import java.util.UUID;
 
 @Service
@@ -94,6 +92,26 @@ public class PaymentService {
 
                 orderRepository.save(order);
                 paymentRepository.save(payment);
+
+                // PAYMENT NOTIFICATION
+                notificationService.sendNotification(
+                        order.getUser().getId(),
+                        "Payment Successful",
+                        "Your payment for order "
+                                + OrderCode.generate(order.getId())
+                                + " was completed successfully.",
+                        NotificationType.PAYMENT
+                );
+
+                // ORDER NOTIFICATION
+                notificationService.sendNotification(
+                        order.getUser().getId(),
+                        "Order Confirmed",
+                        "Your order "
+                                + OrderCode.generate(order.getId())
+                                + " has been confirmed.",
+                        NotificationType.ORDER
+                );
 
                 System.out.println("UPDATED SUCCESS");
         }
