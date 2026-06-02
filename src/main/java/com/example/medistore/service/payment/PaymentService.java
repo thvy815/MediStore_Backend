@@ -16,8 +16,11 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 import java.util.UUID;
 
 @Service
@@ -66,32 +69,33 @@ public class PaymentService {
                 return map(payment);
         }
 
-        public void paymentSuccess(
-                        String transactionRef) {
+        public void paymentSuccess(String transactionRef) {
 
+                System.out.println("PAYMENT SUCCESS CALLED");
                 System.out.println("txnRef = " + transactionRef);
+
                 Payment payment = paymentRepository
                                 .findByTransactionRef(transactionRef)
-                                .orElseThrow(() -> new RuntimeException("NOT FOUND"));
+                                .orElseThrow(() -> {
+
+                                        System.out.println("NOT FOUND TXN");
+
+                                        return new RuntimeException(
+                                                        "Payment NOT FOUND");
+                                });
+
+                System.out.println("FOUND PAYMENT = " + payment.getId());
 
                 payment.setStatus("success");
-
                 payment.setPaidAt(LocalDateTime.now());
 
                 Order order = payment.getOrder();
-
-                order.setStatus("confirmed"); // confirmed -> (preparing) --> delivered
+                order.setStatus("confirmed");
 
                 orderRepository.save(order);
-
-                notificationService.sendNotification(
-                                order.getUser().getId(),
-                                "Payment Successful",
-                                "Your payment for order " + OrderCode.generate(order.getId())
-                                                + " was completed successfully.",
-                                NotificationType.PAYMENT);
-
                 paymentRepository.save(payment);
+
+                System.out.println("UPDATED SUCCESS");
         }
 
         public List<PaymentResponse> history(
@@ -160,10 +164,8 @@ public class PaymentService {
                                 .orElseThrow(() -> new RuntimeException(
                                                 "Payment not found"));
 
-                String txnRef = new java.text.SimpleDateFormat("yyMMdd")
-                                .format(new java.util.Date())
-                                + "_"
-                                + System.currentTimeMillis();
+                String txnRef = String.valueOf(
+                                System.currentTimeMillis());
 
                 payment.setTransactionRef(
                                 txnRef);
@@ -187,4 +189,13 @@ public class PaymentService {
 
                 return map(payment);
         }
+
+        public boolean verifyVNPaySignature(
+                        Map<String, String> params)
+                        throws Exception {
+
+                return vnPayService.verifySignature(
+                                params);
+        }
+
 }
