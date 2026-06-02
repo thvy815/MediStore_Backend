@@ -36,7 +36,7 @@ public class SecurityConfig {
                                                                 "/api/auth/**",
                                                                 "/api/customer/**",
                                                                 "/api/categories/**",
-                                                                "/api/payments/zalopay/callback",
+                                                                "/api/payments/**",
 
                                                                 // WebSocket
                                                                 "/ws-chat/**",
