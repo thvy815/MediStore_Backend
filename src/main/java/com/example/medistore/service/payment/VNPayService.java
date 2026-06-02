@@ -32,44 +32,41 @@ public class VNPayService {
                         Payment payment,
                         HttpServletRequest request) throws Exception {
 
-                // Mã giao dịch unique
                 String txnRef = payment.getTransactionRef();
 
-                // Timezone Việt Nam
                 Calendar calendar = Calendar.getInstance(
                                 TimeZone.getTimeZone("Asia/Ho_Chi_Minh"));
 
-                // Ngày tạo
-                String createDate = new SimpleDateFormat("yyyyMMddHHmmss")
+                String createDate = new SimpleDateFormat(
+                                "yyyyMMddHHmmss")
                                 .format(calendar.getTime());
 
-                // Hết hạn sau 15 phút
                 calendar.add(Calendar.MINUTE, 15);
 
-                String expireDate = new SimpleDateFormat("yyyyMMddHHmmss")
+                String expireDate = new SimpleDateFormat(
+                                "yyyyMMddHHmmss")
                                 .format(calendar.getTime());
 
-                // Amount * 100
+                // amount * 100
                 String amount = payment.getAmount()
                                 .multiply(BigDecimal.valueOf(100))
                                 .toBigInteger()
                                 .toString();
 
-                // Params VNPay
                 Map<String, String> params = new TreeMap<>();
 
                 params.put("vnp_Version", "2.1.0");
                 params.put("vnp_Command", "pay");
-
                 params.put("vnp_TmnCode", tmnCode);
 
                 params.put("vnp_Amount", amount);
-
                 params.put("vnp_CurrCode", "VND");
 
                 params.put("vnp_TxnRef", txnRef);
 
-                params.put("vnp_OrderInfo", "Thanh toan don hang");
+                params.put(
+                                "vnp_OrderInfo",
+                                "Thanh toan don hang");
 
                 params.put("vnp_OrderType", "other");
 
@@ -77,17 +74,18 @@ public class VNPayService {
 
                 params.put("vnp_ReturnUrl", returnUrl);
 
-                params.put("vnp_IpAddr", getIpAddress(request));
-
-                params.put("vnp_CreateDate", createDate);
-
-                params.put("vnp_ExpireDate", expireDate);
+                params.put(
+                                "vnp_IpAddr",
+                                getIpAddress(request));
 
                 params.put(
-                                "vnp_IpnUrl",
-                                "https://medistore-backend-i0de.onrender.com/api/payments/vnpay-ipn");
+                                "vnp_CreateDate",
+                                createDate);
 
-                // Build hashData + query
+                params.put(
+                                "vnp_ExpireDate",
+                                expireDate);
+
                 StringBuilder hashData = new StringBuilder();
 
                 StringBuilder query = new StringBuilder();
@@ -102,18 +100,17 @@ public class VNPayService {
 
                         String fieldValue = entry.getValue();
 
-                        if (fieldValue != null && !fieldValue.isEmpty()) {
+                        if (fieldValue != null
+                                        && !fieldValue.isEmpty()) {
 
                                 String encodedValue = URLEncoder.encode(
                                                 fieldValue,
-                                                StandardCharsets.US_ASCII.toString());
+                                                StandardCharsets.UTF_8);
 
-                                // HASH DATA
                                 hashData.append(fieldName)
                                                 .append("=")
                                                 .append(encodedValue);
 
-                                // QUERY
                                 query.append(fieldName)
                                                 .append("=")
                                                 .append(encodedValue);
@@ -125,30 +122,32 @@ public class VNPayService {
                         }
                 }
 
-                // Tạo secure hash
                 String secureHash = hmacSHA512(
                                 hashSecret,
                                 hashData.toString());
 
-                // Add secure hash
                 query.append("&vnp_SecureHash=")
                                 .append(secureHash);
 
-                // URL thanh toán
                 String paymentUrl = payUrl + "?" + query;
 
-                // DEBUG
-                System.out.println("=========== VNPAY DEBUG ===========");
-                System.out.println("HASH DATA:");
-                System.out.println(hashData);
+                System.out.println(
+                                "=========== VNPAY DEBUG ===========");
 
-                System.out.println("SECURE HASH:");
-                System.out.println(secureHash);
+                System.out.println(
+                                "HASH DATA: "
+                                                + hashData);
 
-                System.out.println("PAYMENT URL:");
-                System.out.println(paymentUrl);
+                System.out.println(
+                                "SECURE HASH: "
+                                                + secureHash);
 
-                System.out.println("===================================");
+                System.out.println(
+                                "PAYMENT URL: "
+                                                + paymentUrl);
+
+                System.out.println(
+                                "===================================");
 
                 return paymentUrl;
         }
@@ -175,6 +174,63 @@ public class VNPayService {
                 }
 
                 return hash.toString();
+        }
+
+        public boolean verifySignature(
+                        Map<String, String> params)
+                        throws Exception {
+
+                String receivedHash = params.get("vnp_SecureHash");
+
+                Map<String, String> fields = new TreeMap<>();
+
+                for (Map.Entry<String, String> entry : params.entrySet()) {
+
+                        String key = entry.getKey();
+
+                        if (!key.equals("vnp_SecureHash")
+                                        && !key.equals("vnp_SecureHashType")) {
+
+                                fields.put(
+                                                key,
+                                                entry.getValue());
+                        }
+                }
+
+                StringBuilder hashData = new StringBuilder();
+
+                Iterator<Map.Entry<String, String>> itr = fields.entrySet().iterator();
+
+                while (itr.hasNext()) {
+
+                        Map.Entry<String, String> entry = itr.next();
+
+                        hashData.append(entry.getKey())
+                                        .append("=")
+                                        .append(
+                                                        URLEncoder.encode(
+                                                                        entry.getValue(),
+                                                                        StandardCharsets.UTF_8));
+
+                        if (itr.hasNext()) {
+                                hashData.append("&");
+                        }
+                }
+
+                String calculatedHash = hmacSHA512(
+                                hashSecret,
+                                hashData.toString());
+
+                System.out.println(
+                                "RECEIVED HASH: "
+                                                + receivedHash);
+
+                System.out.println(
+                                "CALCULATED HASH: "
+                                                + calculatedHash);
+
+                return calculatedHash.equalsIgnoreCase(
+                                receivedHash);
         }
 
         private String getIpAddress(HttpServletRequest request) {

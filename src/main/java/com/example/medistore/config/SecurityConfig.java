@@ -44,7 +44,9 @@ public class SecurityConfig {
                                                                 // Swagger
                                                                 "/swagger-ui/**",
                                                                 "/v3/api-docs/**",
-                                                                "/swagger-ui.html")
+                                                                "/swagger-ui.html",
+                                                                "/api/payments/vnpay-return",
+                                                                "/api/payments/vnpay-ipn")
                                                 .permitAll()
 
                                                 .requestMatchers("/api/admin/**")

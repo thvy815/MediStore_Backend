@@ -7,9 +7,12 @@ import com.example.medistore.service.payment.PaymentService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -45,29 +48,119 @@ public class PaymentController {
         return paymentService.getAllHistory();
     }
 
+    /**
+     * VNPay server callback (IPN)
+     * Đây là endpoint QUAN TRỌNG để update DB
+     */
     @GetMapping("/vnpay-ipn")
     public ResponseEntity<?> vnpayIpn(
             @RequestParam Map<String, String> params) {
 
-        String responseCode = params.get("vnp_ResponseCode");
+        try {
 
-        String txnRef = params.get("vnp_TxnRef");
+            System.out.println("===== VNPAY IPN =====");
+            params.forEach((k, v) -> System.out.println(k + " = " + v));
 
-        if ("00".equals(responseCode)) {
+            boolean valid = paymentService.verifyVNPaySignature(params);
 
-            paymentService.paymentSuccess(txnRef);
+            System.out.println("VALID SIGNATURE = " + valid);
+
+            if (!valid) {
+
+                return ResponseEntity.ok(
+                        Map.of(
+                                "RspCode", "97",
+                                "Message", "Invalid signature"));
+            }
+
+            String responseCode = params.get("vnp_ResponseCode");
+
+            String txnRef = params.get("vnp_TxnRef");
+
+            System.out.println("txnRef = " + txnRef);
+            System.out.println("responseCode = " + responseCode);
+
+            // thanh toán thành công
+            if ("00".equals(responseCode)) {
+
+                paymentService.paymentSuccess(txnRef);
+
+                System.out.println(
+                        "PAYMENT UPDATED SUCCESS FROM IPN");
+            }
+
+            return ResponseEntity.ok(
+                    Map.of(
+                            "RspCode", "00",
+                            "Message", "Confirm Success"));
+
+        } catch (Exception e) {
+
+            e.printStackTrace();
+
+            return ResponseEntity.ok(
+                    Map.of(
+                            "RspCode", "99",
+                            "Message", e.getMessage()));
         }
-
-        return ResponseEntity.ok(
-                Map.of(
-                        "RspCode", "00",
-                        "Message", "Confirm Success"));
     }
 
+    /**
+     * User redirect sau khi thanh toán
+     * Chỉ redirect FE, KHÔNG nên dùng để update DB
+     */
     @GetMapping("/vnpay-return")
-    public String vnpayReturn() {
+    public void vnpayReturn(
+            @RequestParam Map<String, String> params,
+            HttpServletResponse response)
+            throws Exception {
 
-        return "Payment success";
+        try {
+
+            System.out.println("===== VNPAY RETURN =====");
+
+            params.forEach((k, v) -> System.out.println(k + " = " + v));
+
+            boolean valid = paymentService.verifyVNPaySignature(params);
+
+            System.out.println("VALID = " + valid);
+
+            String responseCode = params.get("vnp_ResponseCode");
+
+            String txnRef = params.get("vnp_TxnRef");
+
+            System.out.println("txnRef = " + txnRef);
+            System.out.println("responseCode = " + responseCode);
+
+            /**
+             * Backup update
+             * Nếu IPN fail thì return vẫn update
+             */
+            if (valid && "00".equals(responseCode)) {
+
+                try {
+
+                    paymentService.paymentSuccess(txnRef);
+
+                    System.out.println(
+                            "PAYMENT UPDATED SUCCESS FROM RETURN");
+
+                } catch (Exception ex) {
+
+                    System.out.println(
+                            "UPDATE FAILED: "
+                                    + ex.getMessage());
+                }
+            }
+
+        } catch (Exception e) {
+
+            e.printStackTrace();
+        }
+
+        // redirect frontend
+        response.sendRedirect(
+                "https://medi-store-frontend-two.vercel.app");
     }
 
     @PostMapping("/success/{txnRef}")
@@ -85,8 +178,7 @@ public class PaymentController {
             throws Exception {
 
         return paymentService
-                .createZaloPayment(
-                        orderId);
+                .createZaloPayment(orderId);
     }
 
     @PostMapping("/zalopay/callback")
@@ -95,7 +187,9 @@ public class PaymentController {
 
         try {
 
-            System.out.println("===== ZALOPAY CALLBACK =====");
+            System.out.println(
+                    "===== ZALOPAY CALLBACK =====");
+
             System.out.println(body);
 
             String data = (String) body.get("data");
@@ -107,7 +201,8 @@ public class PaymentController {
             String appTransId = (String) dataMap.get("app_trans_id");
 
             System.out.println(
-                    "SUCCESS PAYMENT: " + appTransId);
+                    "SUCCESS PAYMENT: "
+                            + appTransId);
 
             paymentService.paymentSuccess(
                     appTransId);
@@ -145,8 +240,10 @@ public class PaymentController {
             return ResponseEntity.ok(
                     Map.of(
                             "success", true,
-                            "message", "Payment updated successfully",
-                            "updatedAt", java.time.LocalDateTime.now()));
+                            "message",
+                            "Payment updated successfully",
+                            "updatedAt",
+                            LocalDateTime.now()));
 
         } catch (Exception e) {
 
