@@ -34,18 +34,22 @@ public class VNPayService {
 
                 String txnRef = payment.getTransactionRef();
 
-                Calendar calendar = Calendar.getInstance(
-                                TimeZone.getTimeZone("Asia/Ho_Chi_Minh"));
+                TimeZone vnTimeZone = TimeZone.getTimeZone("Asia/Ho_Chi_Minh");
 
-                String createDate = new SimpleDateFormat(
-                                "yyyyMMddHHmmss")
-                                .format(calendar.getTime());
+                Calendar calendar = Calendar.getInstance(vnTimeZone);
+
+                SimpleDateFormat formatter =
+                        new SimpleDateFormat("yyyyMMddHHmmss");
+
+                formatter.setTimeZone(vnTimeZone);
+
+                String createDate =
+                        formatter.format(calendar.getTime());
 
                 calendar.add(Calendar.MINUTE, 15);
 
-                String expireDate = new SimpleDateFormat(
-                                "yyyyMMddHHmmss")
-                                .format(calendar.getTime());
+                String expireDate =
+                        formatter.format(calendar.getTime());
 
                 // amount * 100
                 String amount = payment.getAmount()
