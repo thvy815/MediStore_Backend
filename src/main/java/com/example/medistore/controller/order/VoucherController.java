@@ -1,6 +1,7 @@
 package com.example.medistore.controller.order;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -36,9 +37,13 @@ public class VoucherController {
         return voucherService.createVoucher(request);
     }
 
+    // sửa chỗ này
     @GetMapping
-    public List<VoucherResponse> getAllVouchers() {
-        return voucherService.getAllVouchers();
+    public List<VoucherResponse> getAllVouchers(
+            @RequestParam UUID userId) {
+
+        return voucherService
+                .getAllVouchers(userId);
     }
 
     @GetMapping("/{id}")

@@ -53,9 +53,58 @@ public class VoucherService {
                                 voucherRepository.save(voucher));
         }
 
-        public List<VoucherResponse> getAllVouchers() {
+        public List<VoucherResponse> getAllVouchers(
+                        UUID userId) {
+
+                LocalDate today = LocalDate.now();
+
                 return voucherRepository.findAll()
                                 .stream()
+
+                                // chỉ lấy voucher active
+                                .filter(voucher -> "active".equalsIgnoreCase(
+                                                voucher.getStatus()))
+
+                                // chưa tới ngày start
+                                .filter(voucher -> voucher.getStartDate() == null
+                                                || !today.isBefore(
+                                                                voucher.getStartDate()))
+
+                                // hết hạn
+                                .filter(voucher -> voucher.getEndDate() == null
+                                                || !today.isAfter(
+                                                                voucher.getEndDate()))
+
+                                // hết lượt global
+                                .filter(voucher -> {
+
+                                        if (voucher.getUsageLimit() == null) {
+                                                return true;
+                                        }
+
+                                        int usedCount = orderVoucherRepository
+                                                        .countVoucherUsed(
+                                                                        voucher.getId());
+
+                                        return usedCount < voucher.getUsageLimit();
+                                })
+
+                                // user đã dùng đủ lượt
+                                .filter(voucher -> {
+
+                                        if (voucher.getUsagePerUser() == null) {
+
+                                                return true;
+                                        }
+
+                                        int usedByUser = orderVoucherRepository
+                                                        .countVoucherUsedByUser(
+                                                                        voucher.getId(),
+                                                                        userId);
+
+                                        return usedByUser < voucher.getUsagePerUser();
+                                })
+
                                 .map(this::mapToResponse)
                                 .toList();
         }
