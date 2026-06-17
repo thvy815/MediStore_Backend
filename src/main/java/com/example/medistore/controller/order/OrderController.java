@@ -1,5 +1,7 @@
 package com.example.medistore.controller.order;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -63,5 +65,28 @@ public class OrderController {
     ) {
         return orderService.cancelOrder(orderId, userId);
     }
+
+    @GetMapping("/filter")
+    public List<OrderResponse> filterOrders(
+            @RequestParam LocalDate startDate,
+            @RequestParam LocalDate endDate
+    ) {
+        LocalDateTime start = startDate.atStartOfDay();
+        LocalDateTime end = endDate.plusDays(1).atStartOfDay().minusNanos(1);
+
+        return orderService.getOrdersByDateRange(start, end);
+    }
+
+    @GetMapping("/user/{userId}/filter")
+public List<OrderResponse> filterOrdersByUser(
+        @PathVariable UUID userId,
+        @RequestParam LocalDate startDate,
+        @RequestParam LocalDate endDate
+) {
+    LocalDateTime start = startDate.atStartOfDay();
+    LocalDateTime end = endDate.plusDays(1).atStartOfDay().minusNanos(1);
+
+    return orderService.getOrdersByUserAndDateRange(userId, start, end);
+}
 }
 

@@ -144,6 +144,7 @@ public class CartService {
         res.setProductId(item.getProduct().getId());
         res.setProductName(item.getProduct().getName());
         res.setProductUnitId(item.getProductUnit().getId());
+        res.setImageUrl(item.getProduct().getImageUrl());
         res.setUnitName(item.getProductUnit().getUnit().getName());
         res.setQuantity(item.getQuantity());
         res.setUnitPrice(item.getUnitPrice());

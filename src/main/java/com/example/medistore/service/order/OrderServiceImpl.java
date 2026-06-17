@@ -2,6 +2,7 @@ package com.example.medistore.service.order;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -340,6 +341,8 @@ public class OrderServiceImpl implements OrderService {
         return orderMapper.toResponse(order);
     }
 
+    
+
     // ================= CANCEL ORDER =================
 
     @Override
@@ -419,4 +422,26 @@ public class OrderServiceImpl implements OrderService {
 
         return orderMapper.toResponse(order);
     }
+
+    @Override
+@Transactional(readOnly = true)
+public List<OrderResponse> getOrdersByDateRange(LocalDateTime startDate, LocalDateTime endDate) {
+
+    return orderRepository
+            .findByCreatedAtBetweenOrderByCreatedAtDesc(startDate, endDate)
+            .stream()
+            .map(orderMapper::toResponse)
+            .toList();
+}
+
+@Override
+@Transactional(readOnly = true)
+public List<OrderResponse> getOrdersByUserAndDateRange(UUID userId, LocalDateTime startDate, LocalDateTime endDate) {
+
+    return orderRepository
+            .findByUserIdAndCreatedAtBetweenOrderByCreatedAtDesc(userId, startDate, endDate)
+            .stream()
+            .map(orderMapper::toResponse)
+            .toList();
+}
 }

@@ -13,6 +13,7 @@ public class CartItemResponse {
     private UUID productUnitId;
     private String unitName;
     private int quantity;
+    private String imageUrl;
     private BigDecimal unitPrice;
     private boolean isSelected;
 }
