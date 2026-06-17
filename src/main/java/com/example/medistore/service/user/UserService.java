@@ -17,7 +17,9 @@ import com.example.medistore.repository.cart.CartRepository;
 import com.example.medistore.repository.user.RoleRepository;
 import com.example.medistore.repository.user.UserRepository;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.Period;
 import java.util.List;
 import java.util.UUID;
 
@@ -50,6 +52,20 @@ public class UserService {
             throw new RuntimeException("Password cannot be empty");
         }
 
+        // Kiểm tra ngày sinh
+        if (req.getBirthDate() == null) {
+            throw new RuntimeException("Birth date is required");
+        }
+
+        int age = Period.between(
+                req.getBirthDate(),
+                LocalDate.now()
+        ).getYears();
+
+        if (age < 18) {
+            throw new RuntimeException("User must be at least 18 years old");
+        }
+
         Role customerRole = roleRepo.findByName(ROLE_CUSTOMER)
                 .orElseThrow(() -> new RuntimeException("Customer role not found"));
 
@@ -58,6 +74,7 @@ public class UserService {
                 .password(passwordEncoder.encode(req.getPassword()))
                 .fullName(req.getFullName())
                 .phone(req.getPhone())
+                .birthDate(req.getBirthDate())
                 .verificationToken(UUID.randomUUID().toString())
                 .verificationTokenExpiry(LocalDateTime.now().plusHours(24))
                 .build();

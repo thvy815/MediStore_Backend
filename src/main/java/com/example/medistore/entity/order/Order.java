@@ -12,7 +12,9 @@ import com.example.medistore.entity.user.User;
 @Entity
 @Table(name = "orders")
 @Data
-@NoArgsConstructor @AllArgsConstructor @Builder
+@NoArgsConstructor 
+@AllArgsConstructor 
+@Builder
 public class Order {
 
     @Id
