@@ -23,17 +23,30 @@ public class ReportController {
     public List<RevenueReportDTO> getRevenueByDay(
             @RequestParam LocalDate startDate,
             @RequestParam LocalDate endDate) {
-        return reportService.getRevenueByDay(startDate, endDate);
+
+        return reportService.getRevenueByDay(
+                startDate,
+                endDate);
     }
 
     @GetMapping("/revenue/month")
-    public List<RevenueReportDTO> getRevenueByMonth() {
-        return reportService.getRevenueByMonth();
+    public List<RevenueReportDTO> getRevenueByMonth(
+            @RequestParam LocalDate startDate,
+            @RequestParam LocalDate endDate) {
+
+        return reportService.getRevenueByMonth(
+                startDate,
+                endDate);
     }
 
     @GetMapping("/revenue/product")
-    public List<ProductRevenueDTO> getRevenueByProduct() {
-        return reportService.getRevenueByProduct();
+    public List<ProductRevenueDTO> getRevenueByProduct(
+            @RequestParam LocalDate startDate,
+            @RequestParam LocalDate endDate) {
+
+        return reportService.getRevenueByProduct(
+                startDate,
+                endDate);
     }
 
     // =========================
@@ -41,8 +54,13 @@ public class ReportController {
     // =========================
 
     @GetMapping("/best-selling")
-    public List<BestSellingProductDTO> getBestSellingProducts() {
-        return reportService.getBestSellingProducts();
+    public List<BestSellingProductDTO> getBestSellingProducts(
+            @RequestParam LocalDate startDate,
+            @RequestParam LocalDate endDate) {
+
+        return reportService.getBestSellingProducts(
+                startDate,
+                endDate);
     }
 
     // =========================
@@ -57,7 +75,9 @@ public class ReportController {
     @GetMapping("/inventory/low-stock")
     public List<LowStockDTO> getLowStock(
             @RequestParam(defaultValue = "20") Long threshold) {
-        return reportService.getLowStockProducts(threshold);
+
+        return reportService.getLowStockProducts(
+                threshold);
     }
 
     @GetMapping("/inventory/sales-ratio")

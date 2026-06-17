@@ -11,15 +11,22 @@ public interface ReportService {
             LocalDate startDate,
             LocalDate endDate);
 
-    List<RevenueReportDTO> getRevenueByMonth();
+    List<RevenueReportDTO> getRevenueByMonth(
+            LocalDate startDate,
+            LocalDate endDate);
 
-    List<ProductRevenueDTO> getRevenueByProduct();
+    List<ProductRevenueDTO> getRevenueByProduct(
+            LocalDate startDate,
+            LocalDate endDate);
 
-    List<BestSellingProductDTO> getBestSellingProducts();
+    List<BestSellingProductDTO> getBestSellingProducts(
+            LocalDate startDate,
+            LocalDate endDate);
 
     List<InventoryReportDTO> getInventoryReport();
 
-    List<LowStockDTO> getLowStockProducts(Long threshold);
+    List<LowStockDTO> getLowStockProducts(
+            Long threshold);
 
     List<InventorySalesRatioDTO> getInventorySalesRatio();
 }
