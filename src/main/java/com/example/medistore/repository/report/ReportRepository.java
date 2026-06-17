@@ -9,26 +9,30 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
-public interface ReportRepository extends JpaRepository<Order, UUID> {
+public interface ReportRepository
+        extends JpaRepository<Order, UUID> {
 
     // =====================================================
     // REVENUE BY DAY
     // =====================================================
 
     @Query(value = """
-                SELECT
-                    CAST(o.created_at AS DATE) as period,
-                    COALESCE(SUM(p.amount), 0) as revenue
-                FROM payments p
-                JOIN orders o ON p.order_id = o.id
-                WHERE p.status = 'success'
-                AND CAST(o.created_at AS DATE)
-                    BETWEEN :startDate AND :endDate
-                GROUP BY CAST(o.created_at AS DATE)
-                ORDER BY CAST(o.created_at AS DATE)
+            SELECT
+                CAST(o.created_at AS DATE) as period,
+                COALESCE(SUM(p.amount), 0) as revenue
+            FROM payments p
+            JOIN orders o
+                ON p.order_id = o.id
+            WHERE p.status = 'success'
+            AND CAST(o.created_at AS DATE)
+                BETWEEN :startDate
+                AND :endDate
+            GROUP BY CAST(o.created_at AS DATE)
+            ORDER BY CAST(o.created_at AS DATE)
             """, nativeQuery = true)
     List<Object[]> getRevenueByDay(
             @Param("startDate") LocalDate startDate,
+
             @Param("endDate") LocalDate endDate);
 
     // =====================================================
@@ -36,111 +40,240 @@ public interface ReportRepository extends JpaRepository<Order, UUID> {
     // =====================================================
 
     @Query(value = """
-                SELECT
-                    TO_CHAR(o.created_at, 'YYYY-MM') as period,
-                    COALESCE(SUM(p.amount), 0) as revenue
-                FROM payments p
-                JOIN orders o ON p.order_id = o.id
-                WHERE p.status = 'success'
-                GROUP BY TO_CHAR(o.created_at, 'YYYY-MM')
-                ORDER BY period
+            SELECT
+                TO_CHAR(
+                    o.created_at,
+                    'YYYY-MM'
+                ) as period,
+
+                COALESCE(
+                    SUM(p.amount),
+                    0
+                ) as revenue
+
+            FROM payments p
+            JOIN orders o
+                ON p.order_id = o.id
+
+            WHERE p.status = 'success'
+            AND CAST(o.created_at AS DATE)
+                BETWEEN :startDate
+                AND :endDate
+
+            GROUP BY TO_CHAR(
+                o.created_at,
+                'YYYY-MM'
+            )
+
+            ORDER BY period
             """, nativeQuery = true)
-    List<Object[]> getRevenueByMonth();
+    List<Object[]> getRevenueByMonth(
+            @Param("startDate") LocalDate startDate,
+
+            @Param("endDate") LocalDate endDate);
 
     // =====================================================
     // REVENUE BY YEAR
     // =====================================================
 
     @Query(value = """
-                SELECT
-                    EXTRACT(YEAR FROM o.created_at) as period,
-                    COALESCE(SUM(p.amount), 0) as revenue
-                FROM payments p
-                JOIN orders o ON p.order_id = o.id
-                WHERE p.status = 'success'
-                GROUP BY EXTRACT(YEAR FROM o.created_at)
-                ORDER BY period
+            SELECT
+                EXTRACT(
+                    YEAR
+                    FROM o.created_at
+                ) as period,
+
+                COALESCE(
+                    SUM(p.amount),
+                    0
+                ) as revenue
+
+            FROM payments p
+            JOIN orders o
+                ON p.order_id = o.id
+
+            WHERE p.status = 'success'
+            AND CAST(o.created_at AS DATE)
+                BETWEEN :startDate
+                AND :endDate
+
+            GROUP BY EXTRACT(
+                YEAR
+                FROM o.created_at
+            )
+
+            ORDER BY period
             """, nativeQuery = true)
-    List<Object[]> getRevenueByYear();
+    List<Object[]> getRevenueByYear(
+            @Param("startDate") LocalDate startDate,
+
+            @Param("endDate") LocalDate endDate);
 
     // =====================================================
     // REVENUE BY PRODUCT
     // =====================================================
 
     @Query(value = """
-                SELECT
-                    pr.name as product_name,
-                    COALESCE(SUM(oi.quantity), 0) as total_sold,
-                    COALESCE(SUM(oi.quantity * oi.unit_price), 0) as revenue
-                FROM order_items oi
-                JOIN products pr ON oi.product_id = pr.id
-                JOIN orders o ON oi.order_id = o.id
-                WHERE o.status IN ('completed', 'delivered')
-                GROUP BY pr.name
-                ORDER BY revenue DESC
+            SELECT
+                pr.name as product_name,
+
+                COALESCE(
+                    SUM(oi.quantity),
+                    0
+                ) as total_sold,
+
+                COALESCE(
+                    SUM(
+                        oi.quantity
+                        * oi.unit_price
+                    ),
+                    0
+                ) as revenue
+
+            FROM order_items oi
+
+            JOIN products pr
+                ON oi.product_id = pr.id
+
+            JOIN orders o
+                ON oi.order_id = o.id
+
+            WHERE o.status IN (
+                'completed',
+                'delivered'
+            )
+
+            AND CAST(o.created_at AS DATE)
+                BETWEEN :startDate
+                AND :endDate
+
+            GROUP BY pr.name
+            ORDER BY revenue DESC
             """, nativeQuery = true)
-    List<Object[]> getRevenueByProduct();
+    List<Object[]> getRevenueByProduct(
+            @Param("startDate") LocalDate startDate,
+
+            @Param("endDate") LocalDate endDate);
 
     // =====================================================
     // BEST SELLING PRODUCTS
     // =====================================================
 
     @Query(value = """
-                SELECT
-                    pr.name as product_name,
-                    COALESCE(SUM(oi.quantity), 0) as quantity_sold
-                FROM order_items oi
-                JOIN products pr ON oi.product_id = pr.id
-                GROUP BY pr.name
-                ORDER BY quantity_sold DESC
-                LIMIT 10
+            SELECT
+                pr.name as product_name,
+
+                COALESCE(
+                    SUM(oi.quantity),
+                    0
+                ) as quantity_sold
+
+            FROM order_items oi
+
+            JOIN products pr
+                ON oi.product_id = pr.id
+
+            JOIN orders o
+                ON oi.order_id = o.id
+
+            WHERE CAST(o.created_at AS DATE)
+                BETWEEN :startDate
+                AND :endDate
+
+            GROUP BY pr.name
+            ORDER BY quantity_sold DESC
+            LIMIT 10
             """, nativeQuery = true)
-    List<Object[]> getBestSellingProducts();
+    List<Object[]> getBestSellingProducts(
+            @Param("startDate") LocalDate startDate,
+
+            @Param("endDate") LocalDate endDate);
 
     // =====================================================
     // PRODUCT RANKING BY REVENUE
     // =====================================================
 
     @Query(value = """
-                SELECT
-                    pr.name as product_name,
-                    COALESCE(SUM(oi.quantity * oi.unit_price), 0) as revenue
-                FROM order_items oi
-                JOIN products pr ON oi.product_id = pr.id
-                GROUP BY pr.name
-                ORDER BY revenue DESC
+            SELECT
+                pr.name as product_name,
+
+                COALESCE(
+                    SUM(
+                        oi.quantity
+                        * oi.unit_price
+                    ),
+                    0
+                ) as revenue
+
+            FROM order_items oi
+
+            JOIN products pr
+                ON oi.product_id = pr.id
+
+            JOIN orders o
+                ON oi.order_id = o.id
+
+            WHERE CAST(o.created_at AS DATE)
+                BETWEEN :startDate
+                AND :endDate
+
+            GROUP BY pr.name
+            ORDER BY revenue DESC
             """, nativeQuery = true)
-    List<Object[]> getProductRankingByRevenue();
+    List<Object[]> getProductRankingByRevenue(
+            @Param("startDate") LocalDate startDate,
+
+            @Param("endDate") LocalDate endDate);
 
     // =====================================================
     // PRODUCT RANKING BY QUANTITY
     // =====================================================
 
     @Query(value = """
-                SELECT
-                    pr.name as product_name,
-                    COALESCE(SUM(oi.quantity), 0) as quantity_sold
-                FROM order_items oi
-                JOIN products pr ON oi.product_id = pr.id
-                GROUP BY pr.name
-                ORDER BY quantity_sold DESC
-            """, nativeQuery = true)
-    List<Object[]> getProductRankingByQuantity();
+            SELECT
+                pr.name as product_name,
 
-    // =====================================================
+                COALESCE(
+                    SUM(oi.quantity),
+                    0
+                ) as quantity_sold
+
+            FROM order_items oi
+
+            JOIN products pr
+                ON oi.product_id = pr.id
+
+            JOIN orders o
+                ON oi.order_id = o.id
+
+            WHERE CAST(o.created_at AS DATE)
+                BETWEEN :startDate
+                AND :endDate
+
+            GROUP BY pr.name
+            ORDER BY quantity_sold DESC
+            """, nativeQuery = true)
+    List<Object[]> getProductRankingByQuantity(
+            @Param("startDate") LocalDate startDate,
+
+            @Param("endDate") LocalDate endDate);
 
     // =====================================================
     // INVENTORY REPORT
     // =====================================================
 
     @Query(value = """
-                SELECT
-                    p.name,
-                    COALESCE(SUM(pb.quantity_remaining), 0)
-                FROM product_batches pb
-                JOIN products p ON pb.product_id = p.id
-                GROUP BY p.name
-                ORDER BY p.name
+            SELECT
+                p.name,
+                COALESCE(
+                    SUM(pb.quantity_remaining),
+                    0
+                )
+            FROM product_batches pb
+            JOIN products p
+                ON pb.product_id = p.id
+            GROUP BY p.name
+            ORDER BY p.name
             """, nativeQuery = true)
     List<Object[]> getInventoryReport();
 
@@ -149,14 +282,27 @@ public interface ReportRepository extends JpaRepository<Order, UUID> {
     // =====================================================
 
     @Query(value = """
-                SELECT
-                    p.name,
-                    COALESCE(SUM(pb.quantity_remaining), 0) as remain
-                FROM product_batches pb
-                JOIN products p ON pb.product_id = p.id
-                GROUP BY p.name
-                HAVING COALESCE(SUM(pb.quantity_remaining), 0) < :threshold
-                ORDER BY remain ASC
+            SELECT
+                p.name,
+
+                COALESCE(
+                    SUM(pb.quantity_remaining),
+                    0
+                ) as remain
+
+            FROM product_batches pb
+
+            JOIN products p
+                ON pb.product_id = p.id
+
+            GROUP BY p.name
+
+            HAVING COALESCE(
+                SUM(pb.quantity_remaining),
+                0
+            ) < :threshold
+
+            ORDER BY remain ASC
             """, nativeQuery = true)
     List<Object[]> getLowStockProducts(
             @Param("threshold") Long threshold);
@@ -166,20 +312,31 @@ public interface ReportRepository extends JpaRepository<Order, UUID> {
     // =====================================================
 
     @Query(value = """
-                SELECT
-                    p.name,
-                    COALESCE(
-                        SUM(pb.quantity_remaining)::decimal /
-                        NULLIF(SUM(oi.quantity), 0),
+            SELECT
+                p.name,
+
+                COALESCE(
+                    SUM(
+                        pb.quantity_remaining
+                    )::decimal
+                    /
+                    NULLIF(
+                        SUM(oi.quantity),
                         0
-                    ) as ratio
-                FROM products p
-                LEFT JOIN product_batches pb
-                    ON pb.product_id = p.id
-                LEFT JOIN order_items oi
-                    ON oi.product_id = p.id
-                GROUP BY p.name
-                ORDER BY ratio DESC
+                    ),
+                    0
+                ) as ratio
+
+            FROM products p
+
+            LEFT JOIN product_batches pb
+                ON pb.product_id = p.id
+
+            LEFT JOIN order_items oi
+                ON oi.product_id = p.id
+
+            GROUP BY p.name
+            ORDER BY ratio DESC
             """, nativeQuery = true)
     List<Object[]> getInventorySalesRatio();
 
@@ -188,10 +345,15 @@ public interface ReportRepository extends JpaRepository<Order, UUID> {
     // =====================================================
 
     @Query(value = """
-                SELECT COALESCE(SUM(amount), 0)
-                FROM payments
-                WHERE status = 'success'
-                AND CAST(created_at AS DATE) = CURRENT_DATE
+            SELECT
+                COALESCE(
+                    SUM(amount),
+                    0
+                )
+            FROM payments
+            WHERE status = 'success'
+            AND CAST(created_at AS DATE)
+                = CURRENT_DATE
             """, nativeQuery = true)
     Double getTodayRevenue();
 
@@ -200,9 +362,10 @@ public interface ReportRepository extends JpaRepository<Order, UUID> {
     // =====================================================
 
     @Query(value = """
-                SELECT COUNT(*)
-                FROM orders
-                WHERE CAST(created_at AS DATE) = CURRENT_DATE
+            SELECT COUNT(*)
+            FROM orders
+            WHERE CAST(created_at AS DATE)
+                = CURRENT_DATE
             """, nativeQuery = true)
     Long getTodayOrders();
 
@@ -211,9 +374,9 @@ public interface ReportRepository extends JpaRepository<Order, UUID> {
     // =====================================================
 
     @Query(value = """
-                SELECT COUNT(*)
-                FROM products
-                WHERE is_active = true
+            SELECT COUNT(*)
+            FROM products
+            WHERE is_active = true
             """, nativeQuery = true)
     Long getTotalProducts();
 
@@ -222,14 +385,20 @@ public interface ReportRepository extends JpaRepository<Order, UUID> {
     // =====================================================
 
     @Query(value = """
-                SELECT
-                    p.name,
-                    pb.batch_number,
-                    pb.expiry_date
-                FROM product_batches pb
-                JOIN products p ON pb.product_id = p.id
-                WHERE pb.expiry_date < CURRENT_DATE
-                ORDER BY pb.expiry_date ASC
+            SELECT
+                p.name,
+                pb.batch_number,
+                pb.expiry_date
+
+            FROM product_batches pb
+
+            JOIN products p
+                ON pb.product_id = p.id
+
+            WHERE pb.expiry_date
+                < CURRENT_DATE
+
+            ORDER BY pb.expiry_date ASC
             """, nativeQuery = true)
     List<Object[]> getExpiredProducts();
 
@@ -238,15 +407,39 @@ public interface ReportRepository extends JpaRepository<Order, UUID> {
     // =====================================================
 
     @Query(value = """
-                SELECT
-                    TO_CHAR(o.created_at, 'YYYY-MM') as period,
-                    COUNT(o.id) as total_orders,
-                    COALESCE(SUM(p.amount), 0) as revenue
-                FROM orders o
-                LEFT JOIN payments p ON p.order_id = o.id
-                WHERE p.status = 'success'
-                GROUP BY TO_CHAR(o.created_at, 'YYYY-MM')
-                ORDER BY period
+            SELECT
+                TO_CHAR(
+                    o.created_at,
+                    'YYYY-MM'
+                ) as period,
+
+                COUNT(o.id)
+                    as total_orders,
+
+                COALESCE(
+                    SUM(p.amount),
+                    0
+                ) as revenue
+
+            FROM orders o
+
+            LEFT JOIN payments p
+                ON p.order_id = o.id
+
+            WHERE p.status = 'success'
+            AND CAST(o.created_at AS DATE)
+                BETWEEN :startDate
+                AND :endDate
+
+            GROUP BY TO_CHAR(
+                o.created_at,
+                'YYYY-MM'
+            )
+
+            ORDER BY period
             """, nativeQuery = true)
-    List<Object[]> getMonthlyTrend();
+    List<Object[]> getMonthlyTrend(
+            @Param("startDate") LocalDate startDate,
+
+            @Param("endDate") LocalDate endDate);
 }
